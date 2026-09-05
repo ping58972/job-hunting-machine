@@ -148,8 +148,8 @@ Task updates use compare-and-swap. Let `v` be the version the caller read. The
 update matches both the Task ID and `version = v`, then writes `version = v + 1`.
 For example, version 7 becomes 8; another caller still holding 7 receives
 `ConcurrentUpdateError`. Its attempted change creates no audit event. This is a
-storage primitive: future queue policy must authorize transitions and handle
-SQLite lock/snapshot conflicts. Phase 1 does not claim work or retry workers.
+storage primitive. Phase 2 callers use `QueueService` for policy, ownership checks,
+and audited transitions; see [orchestration.md](orchestration.md).
 
 ## Durable IDs and timestamps
 
@@ -190,5 +190,6 @@ and no qualification evaluator runs in this phase.
 
 All tests run with socket network access blocked and use isolated project-local
 databases. The Phase 1 report records acceptance totals and exact executed commands.
-There is no queue scheduler, leasing, recovery worker, LangGraph orchestration,
-ModelGateway implementation, or external integration. Phase 2 has not started.
+Phase 2 reuses the existing queue and memory schema and adds a separate LangGraph-owned
+checkpoint database. No application schema migration was needed. There is no
+ModelGateway implementation or external integration. Phase 3 has not started.

@@ -5,11 +5,16 @@ build-backend = "hatchling.build"
 [project]
 name = "job-hunting-machine"
 version = "0.1.0"
-description = "Local-first job-search database foundation (Architecture v2, Phase 1)"
+description = "Local-first durable job-search orchestration (Architecture v2, Phase 2)"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "aiosqlite>=0.22,<1",
     "alembic>=1.14,<2",
+    "langchain-core>=1.6.2,<2",
+    "langgraph>=1,<2",
+    "langgraph-checkpoint-sqlite>=3,<4",
+    "langsmith>=0.12.1,<1",
     "pydantic>=2.10,<3",
     "python-dotenv>=1.0,<2",
     "pyyaml>=6.0,<7",

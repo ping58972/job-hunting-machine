@@ -42,8 +42,14 @@ IdGenerator, and PathGuard APIs. Use guarded helpers for application file writes
 validate_write alone does not protect a subsequent unguarded write.
 Do not make the fixed project-root boundary configurable.
 Only use static, non-sensitive event, agent, and status tokens in logs.
-Phase 1 adds database persistence only; no workflow runner or external integration.
+Phase 2 adds durable queue orchestration and deterministic fake workflows only.
+Do not start Phase 3 or add external integrations.
 Use Database.transaction() and repository methods for audited state changes.
+Use QueueService for execution transitions; TaskRepository.update_status is a low-level
+persistence primitive and does not enforce lease ownership or transition policy.
+All checkpoint writes must use the lease-fenced AsyncSqliteSaver wrapper.
+Graph nodes must be replay-safe: no uncheckpointed effects, clocks, random values,
+ID generation, or live integration calls. Interrupt nodes restart on human resume.
 Apply schema changes only through Alembic; never use Base.metadata.create_all().
 Keep LangGraph checkpoint tables out of the application database.
 

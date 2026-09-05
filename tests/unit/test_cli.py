@@ -1,4 +1,4 @@
-"""CLI only inspects the foundation; it cannot start workflows."""
+"""Configuration inspection does not start the explicit Phase 2 fixture runner."""
 
 import json
 from pathlib import Path
@@ -21,7 +21,7 @@ def test_cli_version() -> None:
 def test_cli_help() -> None:
     result = runner.invoke(app, ["--help"])
     assert result.exit_code == 0
-    assert "Phase 1" in result.stdout
+    assert "Phase 2" in result.stdout
 
 
 def test_cli_default_configuration(tmp_path: Path) -> None:
@@ -29,8 +29,9 @@ def test_cli_default_configuration(tmp_path: Path) -> None:
     assert result.exit_code == 0, result.output
     config = json.loads(result.stdout)
     assert config["configured_runtime_mode"] == "DRY_RUN"
-    assert config["workflow_available"] is False
-    assert config["phase"] == 1
+    assert config["workflow_available"] is True
+    assert config["external_workflows_available"] is False
+    assert config["phase"] == 2
     log = json.loads(result.stderr)
     assert log["event"] == "configuration_validated"
 
@@ -44,7 +45,7 @@ def test_live_configuration_is_inspection_only(
     assert result.exit_code == 0, result.output
     config = json.loads(result.stdout)
     assert config["configured_runtime_mode"] == "LIVE"
-    assert config["workflow_available"] is False
+    assert config["external_workflows_available"] is False
 
 
 def test_configuration_errors_return_two_and_hide_input(

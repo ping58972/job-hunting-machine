@@ -129,7 +129,10 @@ def create_engine(path: Path = DATABASE_PATH) -> Engine:
     def begin(connection: Connection) -> None:
         # Explicit BEGIN includes SELECT, SAVEPOINT, and DDL in the transaction;
         # sqlite3's legacy transaction mode does not provide that guarantee.
-        connection.exec_driver_sql("BEGIN")
+        statement = (
+            "BEGIN IMMEDIATE" if connection.get_execution_options().get("immediate") else "BEGIN"
+        )
+        connection.exec_driver_sql(statement)
 
     @event.listens_for(engine, "before_cursor_execute")
     def before_statement(
@@ -159,14 +162,24 @@ class Database:
         self._sessions = sessionmaker(self.engine, expire_on_commit=False, autoflush=False)
 
     @contextmanager
-    def transaction(self) -> Iterator[Session]:
+    def transaction(self, *, immediate: bool = False) -> Iterator[Session]:
         """Commit only on success; exceptions roll back the complete unit of work.
 
         Repositories accept this session and never commit themselves. A caller
         must let transaction errors escape this context instead of swallowing them.
         """
-        with self._sessions.begin() as session:
-            yield session
+        if immediate:
+            with (
+                self.engine.connect().execution_options(immediate=True) as connection,
+                Session(connection, expire_on_commit=False, autoflush=False) as session,
+                session.begin(),
+            ):
+                # Acquire the SQLite writer reservation before reading candidates.
+                session.connection()
+                yield session
+        else:
+            with self._sessions.begin() as session:
+                yield session
 
     def migrate(self) -> None:
         """Upgrade this database through Alembic in one explicit transaction."""

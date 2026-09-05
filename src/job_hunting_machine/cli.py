@@ -1,4 +1,4 @@
-"""Local configuration/database administration; no workflow execution command."""
+"""Local administration and Phase 2 deterministic fixture execution."""
 
 import json
 from dataclasses import asdict
@@ -17,7 +17,7 @@ from job_hunting_machine.security.paths import PROJECT_ROOT
 
 app = typer.Typer(
     name="jhm",
-    help="Job Hunting Machine: Phase 1 database. No workflows or external operations.",
+    help="Job Hunting Machine: Phase 2 durable queue. Local fixtures; no external operations.",
     no_args_is_help=True,
     add_completion=False,
     pretty_exceptions_enable=False,
@@ -60,8 +60,9 @@ def show_config(
                 "project_root": str(settings.project_root),
                 "configured_runtime_mode": settings.runtime_mode.value,
                 "log_level": settings.log_level,
-                "phase": 1,
-                "workflow_available": False,
+                "phase": 2,
+                "workflow_available": True,
+                "external_workflows_available": False,
             },
             indent=2,
         )
@@ -95,3 +96,119 @@ def initialize_database(
     finally:
         if database is not None:
             database.dispose()
+
+
+queue_app = typer.Typer(help="Local durable queue and deterministic fixtures only.")
+app.add_typer(queue_app, name="queue")
+
+
+@queue_app.command("demo")
+def enqueue_demo(
+    human: Annotated[bool, typer.Option(help="Pause the fixture for human input.")] = False,
+    database_path: Annotated[Path, typer.Option("--database")] = DATABASE_PATH,
+) -> None:
+    """Explicitly enqueue one synthetic task; no job or application is created."""
+    from job_hunting_machine.database.repositories import TaskCreate
+    from job_hunting_machine.orchestration import QueueService
+
+    database = Database(database_path)
+    try:
+        task_id = QueueService(database).enqueue(
+            TaskCreate("FAKE_HUMAN" if human else "FAKE", payload={"text": "synthetic fixture"})
+        )
+        typer.echo(task_id)
+    finally:
+        database.dispose()
+
+
+@queue_app.command("inspect")
+def inspect_task(
+    task_id: str,
+    database_path: Annotated[Path, typer.Option("--database")] = DATABASE_PATH,
+) -> None:
+    """Display task state and concise memory locally (may contain human replies)."""
+    from job_hunting_machine.orchestration import QueueService
+
+    database = Database(database_path)
+    try:
+        queue = QueueService(database)
+        row = queue.get(task_id)
+        typer.echo(
+            json.dumps(
+                {
+                    "task_id": row.task_id,
+                    "status": row.task_status,
+                    "attempt_count": row.attempt_count,
+                    "memory": queue.memory(task_id),
+                },
+                indent=2,
+            )
+        )
+    finally:
+        database.dispose()
+
+
+@queue_app.command("resume")
+def resume_task(
+    task_id: str,
+    interrupt_id: Annotated[str, typer.Option()],
+    reply: Annotated[str, typer.Option(help="JSON value; do not put secrets in shell history.")],
+    database_path: Annotated[Path, typer.Option("--database")] = DATABASE_PATH,
+) -> None:
+    """Durably record an explicit human reply and make its task eligible again."""
+    from job_hunting_machine.orchestration import QueueService
+
+    database = Database(database_path)
+    try:
+        QueueService(database).resume(task_id, interrupt_id, json.loads(reply))
+        typer.echo("Human reply persisted.")
+    finally:
+        database.dispose()
+
+
+@app.command("worker")
+def run_worker(
+    once: Annotated[
+        bool, typer.Option(help="Recover and run at most one eligible fixture.")
+    ] = False,
+    database_path: Annotated[Path, typer.Option("--database")] = DATABASE_PATH,
+) -> None:
+    """Run only FAKE / FAKE_HUMAN workflows, always locally in DRY_RUN.
+
+    The checkpoint database is langgraph-checkpoints.db beside the selected application database.
+    SIGINT/SIGTERM stop claims and drain active checkpoint writes before releasing ownership.
+    """
+    import asyncio
+
+    from job_hunting_machine.orchestration import QueueService, Worker, fake_workflow
+
+    database = Database(database_path)
+    worker = Worker(
+        QueueService(database),
+        {
+            "FAKE": fake_workflow(),
+            "FAKE_HUMAN": fake_workflow(human=True),
+        },
+        checkpoint_path=database.path.parent / "langgraph-checkpoints.db",
+    )
+
+    async def run() -> None:
+        if once:
+            recovered = await worker.startup()
+            executed = await worker.run_once()
+            typer.echo(
+                json.dumps(
+                    {
+                        "runtime_mode": worker.runtime_mode.value,
+                        "recovered": recovered,
+                        "executed": executed,
+                    }
+                )
+            )
+        else:
+            await worker.run(install_signals=True)
+
+    try:
+        asyncio.run(run())
+    finally:
+        database.dispose()

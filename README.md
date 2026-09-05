@@ -1,9 +1,11 @@
 # Job Hunting Machine
 
-Phase 1 extends the local Python foundation for [Architecture v2](docs/architecture-v2.md).
+Phase 2 extends the local Python foundation for [Architecture v2](docs/architecture-v2.md).
 It provides safe file writes, validated configuration, UTC clocks, ULID identifiers,
 structured logging, an Alembic-managed SQLite database, audited repositories, and a local
-administration CLI. No job-search workflow runs yet.
+administration CLI. Durable workers now run deterministic fixtures with leases,
+LangGraph checkpoints, recovery, and human pause/resume. Real job-search workflows
+and external integrations are not implemented.
 
 ## Setup
 
@@ -39,12 +41,12 @@ unknown YAML fields, invalid values, and unsafe file paths fail validation. Rela
 configuration paths resolve against the project root, independent of the working
 directory. No parent-directory dotenv search or variable interpolation occurs.
 Copy `.env.example` to `.env` if local overrides are needed; keep secrets out of YAML
-and Git. No credentials are needed in Phase 1.
+and Git. No credentials are needed in Phase 2.
 
 Runtime modes are exactly `DRY_RUN`, `STAGING`, and `LIVE`. Log levels are `DEBUG`,
 `INFO`, `WARNING`, `ERROR`, and `CRITICAL`. Reading a configured mode does not start
-a runtime. The CLI exposes `jhm version`, `jhm config`, and local `jhm db init`; no `run` command or
-external executor exists. A future LIVE runner must require both configured LIVE
+a runtime. The explicit `jhm worker` command runs only synthetic workflows in DRY_RUN,
+even if configuration says LIVE. No external executor exists. A future LIVE runner must require both configured LIVE
 and explicit CLI authorization, with separate approval for irreversible actions.
 
 ```bash
@@ -66,6 +68,7 @@ The package uses a `src` layout under `src/job_hunting_machine`:
 | `observability/logging.py` | Structured JSON logging to stderr |
 | `cli.py` | Configuration/version inspection and explicit local database initialization |
 | `database/` | SQLAlchemy models, Alembic migrations, transactions, repositories, and policy seeds |
+| `orchestration/` | Audited queue service, lease-fenced checkpoints, worker recovery, and fixture graphs |
 
 SQLAlchemy and Alembic implement the 23 Architecture v2 domain tables. The separate
 Alembic version table tracks schema revision `0001_architecture_v2`.
@@ -113,11 +116,41 @@ updates require an expected version and append an audit in the same transaction.
 Activity history exposes only append/read operations, with migration-owned triggers
 also blocking SQL UPDATE, DELETE, and replacement of existing events. Artifact and
 Approval repositories store metadata;
-new approvals remain PENDING. No approval decision, queue worker, qualification
+new approvals remain PENDING. No approval decision, qualification
 evaluator, resume builder, or external executor exists.
 
 See [database interfaces and policy data](docs/database.md) for schema ownership,
 transaction examples, durable ID rules, and Phase 1 boundaries.
+
+## Durable queue and checkpoints
+
+Start the local worker after initializing the main database:
+
+```bash
+uv run --offline --locked jhm worker --once
+```
+
+Startup verifies the Alembic revision, initializes the library-owned
+`data/langgraph-checkpoints.db`, recovers expired leases and due retries, and leaves
+human waits unchanged. It does not claim `BUILD_RESUME` or other unimplemented task types.
+Without `--once`, the worker polls until SIGINT/SIGTERM and drains checkpoint writes
+before releasing its active lease.
+
+For an explicit synthetic example, use an isolated project-local database:
+
+```bash
+uv run --offline --locked jhm db init --database .tmp/demo/jobs.db
+uv run --offline --locked jhm queue demo --human --database .tmp/demo/jobs.db
+uv run --offline --locked jhm worker --once --database .tmp/demo/jobs.db
+uv run --offline --locked jhm queue inspect TASK_ID --database .tmp/demo/jobs.db
+uv run --offline --locked jhm queue resume TASK_ID --interrupt-id INTERRUPT_ID --reply true --database .tmp/demo/jobs.db
+uv run --offline --locked jhm worker --once --database .tmp/demo/jobs.db
+```
+
+Replace `TASK_ID` and `INTERRUPT_ID` with the returned identifiers. Human replies are
+stored in the main database before the task becomes READY. The next worker resumes
+the same LangGraph thread; its thread ID is exactly the persisted Task ID.
+See [orchestration interfaces and recovery semantics](docs/orchestration.md).
 
 ### File writes
 
@@ -157,7 +190,8 @@ characters. Task IDs match `^TASK_[0-9A-HJKMNP-TV-Z]{26}$`; Application IDs use
 the same suffix with `APP_`. The other architecture prefixes are `JOB_`, `APR_`,
 `ART_`, `CNT_`, and `EVT_`. Generate an ID once at its future persistence boundary;
 do not regenerate it when replaying work. Phase 1 persists IDs and validates their
-prefix/ULID representation at repository and ORM boundaries. It does not execute tasks.
+prefix/ULID representation at repository and ORM boundaries. Phase 2 reuses these
+IDs across claims, retries, checkpoints, and restarts.
 
 JSON logs include timestamp, level, Task ID, Application ID, agent, event, status,
 duration, and error class. Use static event names and approved correlation fields.
@@ -181,9 +215,12 @@ repository. Tests block outbound socket connections and DNS lookup, use syntheti
 data, and exercise path confinement, configuration precedence, DRY_RUN defaults,
 ID formats, deterministic clocks, structured logs, migrations, SQL constraints,
 transaction rollback, optimistic concurrency, atomic application creation, seeding,
-and persistence across restarts. No test uses an external service.
+and persistence across restarts. Queue acceptance tests also terminate a subprocess
+mid-workflow, resume saved nodes, fence stale writers, and preserve human interrupts.
+No test uses an external service.
 
-See [the Phase 1 implementation report](docs/phase-reports/phase1-report.md) for
+See [the Phase 2 implementation report](docs/phase-reports/phase2-report.md) for
 the executed commands, acceptance results, and limitations. Existing candidate
 documents remain untouched and ignored by Git. The [Phase 0 report](docs/phase-reports/phase0-report.md)
-is preserved as historical evidence. Phase 2 has not started.
+and [Phase 1 report](docs/phase-reports/phase1-report.md) are preserved as historical
+evidence. Phase 3 has not started.
