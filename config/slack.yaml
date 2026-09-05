@@ -1,0 +1,7 @@
+version: 1
+team_id: null
+app_id: null
+authorized_user_ids: []
+allowed_channel_ids: []
+notification_channel_id: null
+approval_ttl_seconds: 86400

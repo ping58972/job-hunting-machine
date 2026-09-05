@@ -17,7 +17,7 @@ from job_hunting_machine.security.paths import PROJECT_ROOT
 
 app = typer.Typer(
     name="jhm",
-    help="Job Hunting Machine: Phase 3 model gateway. CLI runs local fixtures only.",
+    help="Job Hunting Machine: Phase 4 Slack control plane. Live Slack requires opt-in.",
     no_args_is_help=True,
     add_completion=False,
     pretty_exceptions_enable=False,
@@ -60,7 +60,8 @@ def show_config(
                 "project_root": str(settings.project_root),
                 "configured_runtime_mode": settings.runtime_mode.value,
                 "log_level": settings.log_level,
-                "phase": 3,
+                "phase": 4,
+                "slack_control_available": True,
                 "model_gateway_available": True,
                 "workflow_available": True,
                 "external_workflows_available": False,
@@ -226,3 +227,30 @@ def inspect_models() -> None:
         typer.echo("Model registry validation failed.", err=True)
         raise typer.Exit(code=2) from None
     typer.echo(registry.model_dump_json(indent=2))
+
+
+@app.command("slack")
+def slack_control(
+    live: Annotated[bool, typer.Option(help="Explicitly connect to Slack Socket Mode.")] = False,
+    database_path: Annotated[Path, typer.Option("--database")] = DATABASE_PATH,
+) -> None:
+    """Inspect Slack settings; --live additionally requires SLACK_ALLOW_LIVE=1."""
+    from job_hunting_machine.slack.config import SlackInputError, load_slack_settings
+    from job_hunting_machine.slack.socket_mode import run_live
+
+    database: Database | None = None
+    try:
+        settings = load_slack_settings()
+        if not live:
+            typer.echo(settings.model_dump_json(indent=2))
+            return
+        database = Database(database_path)
+        run_live(database, settings=settings)
+    except (ConfigurationError, SlackInputError, DatabaseError, SQLAlchemyError):
+        typer.echo(
+            "Slack control failed; check local configuration and database initialization.", err=True
+        )
+        raise typer.Exit(code=2) from None
+    finally:
+        if database is not None:
+            database.dispose()

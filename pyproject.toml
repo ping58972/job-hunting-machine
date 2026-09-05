@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "job-hunting-machine"
 version = "0.1.0"
-description = "Local-first budgeted model infrastructure (Architecture v2, Phase 3)"
+description = "Local-first Slack control plane (Architecture v2, Phase 4)"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -20,6 +20,8 @@ dependencies = [
     "pydantic>=2.10,<3",
     "python-dotenv>=1.0,<2",
     "pyyaml>=6.0,<7",
+    "slack-bolt>=1.20,<2",
+    "slack-sdk>=3.33,<4",
     "sqlalchemy>=2.0,<3",
     "typer>=0.15,<1",
 ]

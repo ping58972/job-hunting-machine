@@ -42,7 +42,10 @@ IdGenerator, and PathGuard APIs. Use guarded helpers for application file writes
 validate_write alone does not protect a subsequent unguarded write.
 Do not make the fixed project-root boundary configurable.
 Only use static, non-sensitive event, agent, and status tokens in logs.
-Phase 3 adds ModelGateway infrastructure; no Qualification Agent or Phase 4 services.
+Phase 4 adds Slack control infrastructure; do not start Phase 5 link retrieval.
+Slack callbacks record decisions only; they must never submit applications.
+Slack transport defaults to fake; live Socket Mode requires explicit opt-in.
+Route Slack sends through ExternalActionService and keep outbound templates closed.
 OpenAI SDK imports and requests belong only in models/client.py, called by ModelGateway.
 Default gateway mode is mock; live construction requires OPENAI_ALLOW_LIVE=1 and a key.
 Do not release unresolved model budget reservations after a timeout or process death.

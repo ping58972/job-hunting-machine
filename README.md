@@ -1,12 +1,13 @@
 # Job Hunting Machine
 
-Phase 3 extends the local Python foundation for [Architecture v2](docs/architecture-v2.md).
+Phase 4 extends the local Python foundation for [Architecture v2](docs/architecture-v2.md).
 It provides safe file writes, validated configuration, UTC clocks, ULID identifiers,
 structured logging, an Alembic-managed SQLite database, audited repositories, and a local
 administration CLI. Durable workers now run deterministic fixtures with leases,
 LangGraph checkpoints, recovery, and human pause/resume. Real job-search workflows
 are not implemented. ModelGateway now provides budgeted, structured OpenAI Responses
-infrastructure with mock transport by default. No Qualification Agent runs.
+infrastructure with mock transport by default. No Qualification Agent runs. Slack control now supports durable intake, questions,
+notifications, and approval decisions, with fake transport by default.
 
 ## Setup
 
@@ -47,7 +48,7 @@ and Git. No credentials are needed for mock mode or normal tests.
 Runtime modes are exactly `DRY_RUN`, `STAGING`, and `LIVE`. Log levels are `DEBUG`,
 `INFO`, `WARNING`, `ERROR`, and `CRITICAL`. Reading a configured mode does not start
 a runtime. The explicit `jhm worker` command runs only synthetic workflows in DRY_RUN,
-even if configuration says LIVE. No external executor exists. A future LIVE runner must require both configured LIVE
+even if configuration says LIVE. Slack connectivity requires separate explicit opt-in. A future submission runner must require both configured LIVE
 and explicit CLI authorization, with separate approval for irreversible actions.
 
 ```bash
@@ -70,6 +71,7 @@ The package uses a `src` layout under `src/job_hunting_machine`:
 | `cli.py` | Configuration/version inspection and explicit local database initialization |
 | `database/` | SQLAlchemy models, Alembic migrations, transactions, repositories, and policy seeds |
 | `orchestration/` | Audited queue service, lease-fenced checkpoints, worker recovery, and fixture graphs |
+| `slack/` | Durable Slack inbox, safe outbox, approval decisions, and opt-in Socket Mode |
 | `models/` | ModelGateway, registry, budgets, pricing, prompts, and Responses/mock transports |
 
 SQLAlchemy and Alembic implement the 23 Architecture v2 domain tables. The separate
@@ -118,8 +120,8 @@ updates require an expected version and append an audit in the same transaction.
 Activity history exposes only append/read operations, with migration-owned triggers
 also blocking SQL UPDATE, DELETE, and replacement of existing events. Artifact and
 Approval repositories store metadata;
-new approvals remain PENDING. No approval decision, qualification
-evaluator, resume builder, or external executor exists.
+new approvals remain PENDING until explicitly decided through ApprovalService.
+No qualification evaluator, resume builder, or submission executor exists.
 
 See [database interfaces and policy data](docs/database.md) for schema ownership,
 transaction examples, durable ID rules, and Phase 1 boundaries.
@@ -235,9 +237,23 @@ and persistence across restarts. Queue acceptance tests also terminate a subproc
 mid-workflow, resume saved nodes, fence stale writers, and preserve human interrupts.
 No test uses an external service.
 
-See [the Phase 3 implementation report](docs/phase-reports/phase3-report.md) for
+See [the Phase 4 implementation report](docs/phase-reports/phase4-report.md) for
 the executed commands, acceptance results, and limitations. Existing candidate
 documents remain untouched and ignored by Git. The [Phase 0 report](docs/phase-reports/phase0-report.md)
 and [Phase 1 report](docs/phase-reports/phase1-report.md) are preserved as historical
 evidence, together with the [Phase 2 report](docs/phase-reports/phase2-report.md).
-Phase 4 has not started.
+The [Phase 3 report](docs/phase-reports/phase3-report.md) is also preserved.
+Phase 5 has not started.
+
+## Slack control plane
+
+Inspect the deny-by-default configuration without connecting:
+
+```bash
+uv run --offline --locked jhm slack
+```
+
+Live operation requires configured workspace, app, channel and user allowlists,
+process environment credentials, `SLACK_ALLOW_LIVE=1`, and `jhm slack --live`.
+Buttons record approval or rejection only; they never execute submission.
+See [Slack setup, recovery, and security boundaries](docs/slack-control-plane.md).

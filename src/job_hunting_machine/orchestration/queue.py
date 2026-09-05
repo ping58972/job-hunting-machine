@@ -289,21 +289,24 @@ class QueueService:
     def resume(self, task_id: str, interrupt_id: str, value: object) -> None:
         """Persist human input before making work READY; repeat identical input safely."""
         with self.database.transaction(immediate=True) as session:
-            row = self._get(session, task_id)
-            stored = session.get(TaskMemory, task_id)
-            memory = json.loads(stored.state_json) if stored else {}
-            reply = {"interrupt_id": interrupt_id, "value": value}
-            if memory.get("resume") == reply:
-                return
-            if row.task_status != "WAITING_HUMAN" or interrupt_id not in memory.get(
-                "interrupts", {}
-            ):
-                raise ConcurrentUpdateError("Human interrupt is no longer pending")
-            memory["resume"] = reply
-            memory["continuation"] = True
-            self._memory(session, row, memory)
-            # A continuation retains its attempt count but receives a fresh lease token.
-            self._finish(session, row, "READY", "task_human_resumed")
+            self.resume_in_transaction(session, task_id, interrupt_id, value)
+
+    def resume_in_transaction(
+        self, session: Session, task_id: str, interrupt_id: str, value: object
+    ) -> None:
+        """Compose a resume with a durable inbox acknowledgment in one writer transaction."""
+        row = self._get(session, task_id)
+        stored = session.get(TaskMemory, task_id)
+        memory = json.loads(stored.state_json) if stored else {}
+        reply = {"interrupt_id": interrupt_id, "value": value}
+        if memory.get("resume") == reply:
+            return
+        if row.task_status != "WAITING_HUMAN" or interrupt_id not in memory.get("interrupts", {}):
+            raise ConcurrentUpdateError("Human interrupt is no longer pending")
+        memory["resume"] = reply
+        memory["continuation"] = True
+        self._memory(session, row, memory)
+        self._finish(session, row, "READY", "task_human_resumed")
 
     def abort(self, lease: Lease) -> None:
         with self.fence(lease) as session:
