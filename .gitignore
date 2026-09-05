@@ -1,0 +1,45 @@
+# Local secrets and candidate source material
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+/source/
+/resumes/
+/cover-letters/
+
+# Workflow output, evidence, authentication state, and databases
+/data/
+/applications/
+/screenshots/
+/evidence/
+/reports/
+/logs/
+/backups/
+/backup/
+/outputs/
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+*.sqlite-*
+*.sqlite3-*
+
+# Python, build output, and development tools
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.pytest-tmp*/
+.mypy_cache/
+.ruff_cache/
+.uv-cache/
+.tmp/
+.coverage*
+htmlcov/
+build/
+dist/
+.DS_Store
+.idea/
+.vscode/

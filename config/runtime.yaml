@@ -1,0 +1,2 @@
+# Mode selection is configuration only. Phase 0 cannot execute workflows.
+runtime_mode: DRY_RUN
