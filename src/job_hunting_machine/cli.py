@@ -1,4 +1,4 @@
-"""Local administration and Phase 2 deterministic fixture execution."""
+"""Local administration, deterministic fixtures, and model configuration inspection."""
 
 import json
 from dataclasses import asdict
@@ -17,7 +17,7 @@ from job_hunting_machine.security.paths import PROJECT_ROOT
 
 app = typer.Typer(
     name="jhm",
-    help="Job Hunting Machine: Phase 2 durable queue. Local fixtures; no external operations.",
+    help="Job Hunting Machine: Phase 3 model gateway. CLI runs local fixtures only.",
     no_args_is_help=True,
     add_completion=False,
     pretty_exceptions_enable=False,
@@ -60,7 +60,8 @@ def show_config(
                 "project_root": str(settings.project_root),
                 "configured_runtime_mode": settings.runtime_mode.value,
                 "log_level": settings.log_level,
-                "phase": 2,
+                "phase": 3,
+                "model_gateway_available": True,
                 "workflow_available": True,
                 "external_workflows_available": False,
             },
@@ -212,3 +213,16 @@ def run_worker(
         asyncio.run(run())
     finally:
         database.dispose()
+
+
+@app.command("models")
+def inspect_models() -> None:
+    """Validate and show model routing/budget configuration without creating an API client."""
+    from job_hunting_machine.models.router import load_registry
+
+    try:
+        registry = load_registry()
+    except ConfigurationError:
+        typer.echo("Model registry validation failed.", err=True)
+        raise typer.Exit(code=2) from None
+    typer.echo(registry.model_dump_json(indent=2))

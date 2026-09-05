@@ -1,11 +1,12 @@
 # Job Hunting Machine
 
-Phase 2 extends the local Python foundation for [Architecture v2](docs/architecture-v2.md).
+Phase 3 extends the local Python foundation for [Architecture v2](docs/architecture-v2.md).
 It provides safe file writes, validated configuration, UTC clocks, ULID identifiers,
 structured logging, an Alembic-managed SQLite database, audited repositories, and a local
 administration CLI. Durable workers now run deterministic fixtures with leases,
 LangGraph checkpoints, recovery, and human pause/resume. Real job-search workflows
-and external integrations are not implemented.
+are not implemented. ModelGateway now provides budgeted, structured OpenAI Responses
+infrastructure with mock transport by default. No Qualification Agent runs.
 
 ## Setup
 
@@ -41,7 +42,7 @@ unknown YAML fields, invalid values, and unsafe file paths fail validation. Rela
 configuration paths resolve against the project root, independent of the working
 directory. No parent-directory dotenv search or variable interpolation occurs.
 Copy `.env.example` to `.env` if local overrides are needed; keep secrets out of YAML
-and Git. No credentials are needed in Phase 2.
+and Git. No credentials are needed for mock mode or normal tests.
 
 Runtime modes are exactly `DRY_RUN`, `STAGING`, and `LIVE`. Log levels are `DEBUG`,
 `INFO`, `WARNING`, `ERROR`, and `CRITICAL`. Reading a configured mode does not start
@@ -69,6 +70,7 @@ The package uses a `src` layout under `src/job_hunting_machine`:
 | `cli.py` | Configuration/version inspection and explicit local database initialization |
 | `database/` | SQLAlchemy models, Alembic migrations, transactions, repositories, and policy seeds |
 | `orchestration/` | Audited queue service, lease-fenced checkpoints, worker recovery, and fixture graphs |
+| `models/` | ModelGateway, registry, budgets, pricing, prompts, and Responses/mock transports |
 
 SQLAlchemy and Alembic implement the 23 Architecture v2 domain tables. The separate
 Alembic version table tracks schema revision `0001_architecture_v2`.
@@ -121,6 +123,20 @@ evaluator, resume builder, or external executor exists.
 
 See [database interfaces and policy data](docs/database.md) for schema ownership,
 transaction examples, durable ID rules, and Phase 1 boundaries.
+
+## ModelGateway infrastructure
+
+`config/models.yaml` defines models, routes, reasoning, and budget ceilings.
+`config/prompts.yaml` contains semantic-versioned instructions. Inspect them with:
+
+```bash
+uv run --offline --locked jhm models
+```
+
+`ModelGateway` defaults to a scripted mock and requires a persisted task for each
+request. Explicit live construction requires `OPENAI_ALLOW_LIVE=1` and an API key;
+normal tests never make live calls. No Qualification Agent is implemented.
+See [model interfaces, pricing, and budget semantics](docs/model-gateway.md).
 
 ## Durable queue and checkpoints
 
@@ -219,8 +235,9 @@ and persistence across restarts. Queue acceptance tests also terminate a subproc
 mid-workflow, resume saved nodes, fence stale writers, and preserve human interrupts.
 No test uses an external service.
 
-See [the Phase 2 implementation report](docs/phase-reports/phase2-report.md) for
+See [the Phase 3 implementation report](docs/phase-reports/phase3-report.md) for
 the executed commands, acceptance results, and limitations. Existing candidate
 documents remain untouched and ignored by Git. The [Phase 0 report](docs/phase-reports/phase0-report.md)
 and [Phase 1 report](docs/phase-reports/phase1-report.md) are preserved as historical
-evidence. Phase 3 has not started.
+evidence, together with the [Phase 2 report](docs/phase-reports/phase2-report.md).
+Phase 4 has not started.

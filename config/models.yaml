@@ -1,0 +1,92 @@
+version: 1
+models:
+  luna:
+    model_id: gpt-5.6-luna
+    reasoning_efforts: [none, low, medium, high, xhigh, max]
+    cache_write_per_million_usd: '0.25'
+    input_per_million_usd: '0.20'
+    cached_input_per_million_usd: '0.02'
+    output_per_million_usd: '1.20'
+  terra:
+    model_id: gpt-5.6-terra
+    reasoning_efforts: [none, low, medium, high, xhigh, max]
+    cache_write_per_million_usd: '2.50'
+    input_per_million_usd: '2.00'
+    cached_input_per_million_usd: '0.20'
+    output_per_million_usd: '12.00'
+  sol:
+    model_id: gpt-5.6-sol
+    reasoning_efforts: [none, low, medium, high, xhigh, max]
+    cache_write_per_million_usd: '5.00'
+    input_per_million_usd: '4.00'
+    cached_input_per_million_usd: '0.40'
+    output_per_million_usd: '20.00'
+  astra:
+    model_id: gpt-6-astra
+    reasoning_efforts: [low, medium, high, xhigh, max]
+    cache_write_per_million_usd: '12.50'
+    enabled: false
+    input_per_million_usd: '10.00'
+    cached_input_per_million_usd: '1.00'
+    output_per_million_usd: '50.00'
+routes:
+  job_html_extraction:
+    primary: deterministic
+    fallback: {model: luna, reasoning: none}
+  job_semantic_extraction:
+    primary: {model: luna, reasoning: low}
+    escalation: {model: terra, reasoning: medium}
+  qualification:
+    primary: {model: luna, reasoning: low}
+    escalation: {model: terra, reasoning: medium}
+    final_escalation: {model: sol, reasoning: high}
+  project_matching:
+    primary: {model: terra, reasoning: medium}
+  resume_planning:
+    primary: {model: terra, reasoning: medium}
+  resume_finalization:
+    primary: {model: sol, reasoning: medium}
+  resume_qa_semantic:
+    primary: {model: terra, reasoning: medium}
+    escalation: {model: sol, reasoning: high}
+  cover_letter:
+    primary: {model: terra, reasoning: medium}
+    escalation: {model: sol, reasoning: medium}
+  unfamiliar_form_question:
+    primary: {model: terra, reasoning: medium}
+    escalation: {model: sol, reasoning: high}
+  contact_relevance:
+    primary: {model: luna, reasoning: low}
+  outreach_draft:
+    primary: {model: terra, reasoning: medium}
+  email_status_classification:
+    primary: {model: luna, reasoning: low}
+  portal_status_classification:
+    primary: {model: luna, reasoning: low}
+  difficult_recovery:
+    primary: {model: sol, reasoning: high}
+budgets:
+  per_task_usd:
+    QUALIFY_JOB: '0.03'
+    BUILD_RESUME: '0.30'
+    BUILD_COVER_LETTER: '0.15'
+    FORM_PROCESS: '0.20'
+    CONNECT_CONTACTS: '0.10'
+    MONITOR_APPLICATION: '0.02'
+  per_application_usd: '1.00'
+  daily_usd: '5.00'
+  monthly_usd: '75.00'
+confidence:
+  extraction_accept: 0.90
+  qualification_auto_pass: 0.90
+  qualification_auto_fail: 0.95
+  status_transition: 0.90
+  contact_relevance: 0.80
+policy:
+  escalation_ceiling: sol
+  schema_attempts_per_model: 2
+  transport_attempts_per_model: 2
+  max_requests: 6
+  max_output_tokens: 1024
+  max_input_tokens: 16000
+  retry_delays_seconds: [1, 2, 4, 8]

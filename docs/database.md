@@ -36,9 +36,8 @@ The revision adds three append-only audit triggers and the two queue indexes spe
 by Architecture v2. Future schema edits require new revisions, not edits to the
 applied revision.
 
-`data/langgraph-checkpoints.db` is reserved for the later LangGraph phase. The
-application engine rejects that filename. No LangGraph table, library, or checkpoint
-database is implemented here.
+`data/langgraph-checkpoints.db` is owned by the Phase 2 LangGraph saver. The
+application engine rejects that filename; application migrations never create its tables.
 
 ## Tables
 
@@ -192,4 +191,5 @@ All tests run with socket network access blocked and use isolated project-local
 databases. The Phase 1 report records acceptance totals and exact executed commands.
 Phase 2 reuses the existing queue and memory schema and adds a separate LangGraph-owned
 checkpoint database. No application schema migration was needed. There is no
-ModelGateway implementation or external integration. Phase 3 has not started.
+business integration. Phase 3 adds ModelGateway and audited budget reservations in
+the existing model_usage table. See [model-gateway.md](model-gateway.md). Phase 4 has not started.

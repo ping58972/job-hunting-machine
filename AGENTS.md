@@ -42,8 +42,10 @@ IdGenerator, and PathGuard APIs. Use guarded helpers for application file writes
 validate_write alone does not protect a subsequent unguarded write.
 Do not make the fixed project-root boundary configurable.
 Only use static, non-sensitive event, agent, and status tokens in logs.
-Phase 2 adds durable queue orchestration and deterministic fake workflows only.
-Do not start Phase 3 or add external integrations.
+Phase 3 adds ModelGateway infrastructure; no Qualification Agent or Phase 4 services.
+OpenAI SDK imports and requests belong only in models/client.py, called by ModelGateway.
+Default gateway mode is mock; live construction requires OPENAI_ALLOW_LIVE=1 and a key.
+Do not release unresolved model budget reservations after a timeout or process death.
 Use Database.transaction() and repository methods for audited state changes.
 Use QueueService for execution transitions; TaskRepository.update_status is a low-level
 persistence primitive and does not enforce lease ownership or transition policy.
