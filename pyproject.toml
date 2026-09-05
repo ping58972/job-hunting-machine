@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "job-hunting-machine"
 version = "0.1.0"
-description = "Local-first job-search workflow foundation (Architecture v2, Phase 0)"
+description = "Local-first job-search database foundation (Architecture v2, Phase 1)"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -34,7 +34,7 @@ packages = ["src/job_hunting_machine"]
 [tool.hatch.build.targets.sdist]
 include = [
     "/src", "/tests", "/config", "/docs", "/AGENTS.md", "/README.md",
-    "/pyproject.toml", "/uv.lock", "/.gitignore", "/.env.example", "/.python-version",
+    "/pyproject.toml", "/uv.lock", "/alembic.ini", "/.gitignore", "/.env.example", "/.python-version",
 ]
 
 [tool.uv]

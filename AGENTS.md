@@ -42,7 +42,10 @@ IdGenerator, and PathGuard APIs. Use guarded helpers for application file writes
 validate_write alone does not protect a subsequent unguarded write.
 Do not make the fixed project-root boundary configurable.
 Only use static, non-sensitive event, agent, and status tokens in logs.
-Phase 0 has no database schema, workflow runner, or external integration.
+Phase 1 adds database persistence only; no workflow runner or external integration.
+Use Database.transaction() and repository methods for audited state changes.
+Apply schema changes only through Alembic; never use Base.metadata.create_all().
+Keep LangGraph checkpoint tables out of the application database.
 
 LOCAL DEVELOPMENT:
 Run from the project root with Python 3.12+ and uv.

@@ -11,6 +11,7 @@ from job_hunting_machine.ids import (
     ULID_ALPHABET,
     IdGenerator,
     IdKind,
+    validate_id,
 )
 
 
@@ -75,3 +76,25 @@ def test_wrong_entropy_length_is_rejected(size: int) -> None:
     generator = IdGenerator(entropy=lambda _: bytes(size))
     with pytest.raises(ValueError, match="exactly 10 bytes"):
         generator.generate_ulid()
+
+
+def test_validate_id_preserves_an_existing_identifier() -> None:
+    original = IdGenerator().task_id()
+    assert validate_id(original, IdKind.TASK) == original
+
+
+@pytest.mark.parametrize(
+    "identifier",
+    [
+        "TASK_" + "0" * 25,
+        "TASK_" + "0" * 27,
+        "APP_" + "0" * 26,
+        "TASK_" + "I" * 26,
+        "TASK_" + "8" + "0" * 25,
+        "TASK_" + "0" * 26 + "\n",
+        "task_" + "0" * 26,
+    ],
+)
+def test_persisted_id_validation_rejects_noncanonical_values(identifier: str) -> None:
+    with pytest.raises(ValueError):
+        validate_id(identifier, IdKind.TASK)

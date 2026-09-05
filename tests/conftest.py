@@ -16,7 +16,7 @@ def isolated_environment(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture(autouse=True)
 def no_network(monkeypatch: pytest.MonkeyPatch) -> None:
     def blocked(*args: object, **kwargs: object) -> None:
-        raise AssertionError("Network access is forbidden in Phase 0 tests.")
+        raise AssertionError("Network access is forbidden in repository tests.")
 
     monkeypatch.setattr(socket, "create_connection", blocked)
     monkeypatch.setattr(socket, "getaddrinfo", blocked)

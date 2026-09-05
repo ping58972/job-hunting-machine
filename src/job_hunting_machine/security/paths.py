@@ -189,6 +189,29 @@ class PathGuard:
         """Encode text and atomically write it through the shared path guard."""
         return self.write_bytes(path, data.encode(encoding))
 
+    def prepare_private_file(self, path: str | Path) -> Path:
+        """Reserve a private regular file for a native writer without replacing data.
+
+        Intended for SQLite, which must own its database inode. This is not a
+        capability for subsequent native writes: callers must also guard sidecars
+        and keep the containing directory trusted throughout the writer lifetime.
+        """
+        target = self.validate_write(path)
+        if target == self.root:
+            raise PathGuardError("The write root cannot be opened as a file")
+        with self._parent_descriptor(target) as descriptor:
+            opened = os.open(
+                target.name, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600, dir_fd=descriptor
+            )
+            try:
+                metadata = os.fstat(opened)
+                if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
+                    raise PathGuardError("Native writer destination must be a private regular file")
+                os.fchmod(opened, 0o600)
+            finally:
+                os.close(opened)
+        return target
+
     def mkdir(self, path: str | Path, *, parents: bool = False, exist_ok: bool = False) -> Path:
         """Create guarded directories with at most 0700 permissions."""
         target = self.validate_write(path)

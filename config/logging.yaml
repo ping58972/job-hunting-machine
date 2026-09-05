@@ -1,2 +1,2 @@
-# Structured JSON logs go to stderr; no persistent file sink in Phase 0.
+# Structured JSON logs go to stderr; no persistent file sink in Phase 1.
 log_level: INFO

@@ -31,6 +31,21 @@ class IdKind(StrEnum):
     EVENT = "EVT"
 
 
+def validate_id(value: str, kind: IdKind) -> str:
+    """Validate a persisted identifier without generating or changing its value.
+
+    ULIDs encode 128 bits in 26 Base32 characters. The first character must be
+    0-7 so the representation cannot exceed 128 bits.
+    """
+    if not isinstance(kind, IdKind):
+        raise ValueError("An architecture-defined IdKind is required")
+    if not isinstance(value, str) or re.fullmatch(rf"{kind.value}_{ULID_PATTERN}", value) is None:
+        raise ValueError(f"Invalid {kind.value} identifier")
+    if value[len(kind.value) + 1] not in "01234567":
+        raise ValueError("Noncanonical ULID identifier")
+    return value
+
+
 class IdGenerator:
     """Create ULIDs with a 48-bit timestamp and 80 cryptographically random bits.
 

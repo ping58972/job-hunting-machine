@@ -172,3 +172,27 @@ def test_unsupported_platform_fails_closed(
     with pytest.raises(PathGuardError, match="POSIX"):
         guard.write_text("file.txt", "forbidden")
     assert not (guard.root / "file.txt").exists()
+
+
+def test_native_file_reservation_never_truncates_existing_data(guard: PathGuard) -> None:
+    target = guard.write_bytes("existing.db", b"preserve exactly")
+    original_inode = target.stat().st_ino
+    assert guard.prepare_private_file(target) == target
+    assert target.read_bytes() == b"preserve exactly"
+    assert target.stat().st_ino == original_inode
+    assert stat.S_IMODE(target.stat().st_mode) == 0o600
+
+
+def test_native_file_reservation_creates_private_file(guard: PathGuard) -> None:
+    target = guard.prepare_private_file("new.db")
+    assert target.read_bytes() == b""
+    assert stat.S_IMODE(target.stat().st_mode) == 0o600
+
+
+def test_native_file_reservation_rejects_symlink(guard: PathGuard, tmp_path: Path) -> None:
+    outside = tmp_path / "outside.txt"
+    outside.write_text("preserve")
+    (guard.root / "alias.db").symlink_to(outside)
+    with pytest.raises(PathGuardError):
+        guard.prepare_private_file("alias.db")
+    assert outside.read_text() == "preserve"
