@@ -53,6 +53,7 @@ class Worker:
         self.queue = queue
         self.runtime_mode = RuntimeMode.DRY_RUN
         self.workflows = dict(workflows)
+        self.task_types = tuple(workflows)
         self.checkpoint_path = checkpoint_path
         self.heartbeat_seconds = heartbeat_seconds
         self.poll_seconds = poll_seconds
@@ -162,7 +163,7 @@ class Worker:
     async def run_once(self) -> bool:
         if self.stopping.is_set():
             return False
-        claiming = asyncio.create_task(asyncio.to_thread(self.queue.claim, tuple(self.workflows)))
+        claiming = asyncio.create_task(asyncio.to_thread(self.queue.claim, self.task_types))
         try:
             lease = await asyncio.shield(claiming)
         except asyncio.CancelledError:

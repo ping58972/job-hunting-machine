@@ -42,7 +42,13 @@ IdGenerator, and PathGuard APIs. Use guarded helpers for application file writes
 validate_write alone does not protect a subsequent unguarded write.
 Do not make the fixed project-root boundary configurable.
 Only use static, non-sensitive event, agent, and status tokens in logs.
-Phase 6 adds source-backed candidate knowledge; do not start Phase 7 resume editing.
+Phase 7 adds native resume and cover-letter artifacts; do not start Phase 8 form processing.
+Copy Google Docs natively; edit only PROJECTS and SKILLS in the resume template.
+Keep template tables, headers, paragraphs, fonts, margins and protected text intact.
+Generated claims must resolve to current VERIFIED facts; never infer metrics.
+All document mutations go through resume.actions.ExternalActionService.
+Native GDOC pointers require content snapshots and validated PDF artifacts.
+Create FORM_PROCESS only in the transaction that records validated artifacts.
 Extracted GitHub observations remain UNVERIFIED until explicit audited human review.
 Resume retrieval must use current VERIFIED facts with validated source evidence only.
 Keep qualification graph nodes pure; fetch/model calls run at durable effect boundaries.

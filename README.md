@@ -1,13 +1,25 @@
 # Job Hunting Machine
 
-Phase 6 extends the local Python foundation for [Architecture v2](docs/architecture-v2.md).
+Phase 7 extends the local Python foundation for [Architecture v2](docs/architecture-v2.md).
 It provides safe file writes, validated configuration, UTC clocks, ULID identifiers,
 structured logging, an Alembic-managed SQLite database, audited repositories, and a local
 administration CLI. Durable workers now run deterministic fixtures with leases,
-LangGraph checkpoints, recovery, and human pause/resume. Phase 5 workers retrieve links and qualify jobs; later preparation and submission
-workflows are not implemented. ModelGateway now provides budgeted, structured OpenAI Responses
+LangGraph checkpoints, recovery, and human pause/resume. Workers retrieve links, qualify jobs,
+maintain verified candidate knowledge, and prepare native Google Docs resumes and cover letters.
+Form processing and submission are not implemented. ModelGateway provides budgeted, structured OpenAI Responses
 infrastructure with mock transport by default. Qualification uses deterministic policy first and optional budgeted semantic checks. Slack control now supports durable intake, questions,
 notifications, and approval decisions, with fake transport by default.
+
+Phase 7 documentation: [Resume and cover-letter workflow](docs/resume-artifacts.md) and
+[acceptance report](docs/phase-reports/phase7-report.md). The default resume command is offline:
+
+```bash
+uv run --locked jhm resume worker --once
+```
+
+Actual generation requires explicit provider opt-ins, verified candidate facts, and a verified
+template source. GDOC files are local pointers to copied native cloud documents, accompanied
+by hashed document snapshots and validated one-page PDFs. Fonts and margins are never shrunk.
 
 ## Setup
 

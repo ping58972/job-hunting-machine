@@ -1,10 +1,10 @@
 # Job Hunting Machine Architecture v2
 
-**Document:** `docs/architecture-v2.md`  
-**Project:** Job Hunting Machine  
-**Architecture Version:** 2.0  
-**Status:** Proposed / Implementation Contract  
-**Date:** 2026-09-05  
+**Document:** `docs/architecture-v2.md`
+**Project:** Job Hunting Machine
+**Architecture Version:** 2.0
+**Status:** Proposed / Implementation Contract
+**Date:** 2026-09-05
 **Project Root:** `/Users/ping58972/Documents/job-hunting-machine`
 
 ---
@@ -334,30 +334,30 @@ flowchart TD
 
 # 4. Technology Stack
 
-| Layer | Technology |
-|---|---|
-| Language | Python 3.12+ |
-| Package management | `uv` |
-| Workflow engine | LangGraph |
-| Primary database | SQLite |
-| ORM | SQLAlchemy 2.x |
-| Migration | Alembic |
-| Validation | Pydantic |
-| Browser | Playwright |
-| HTTP | `httpx` |
-| HTML parsing | `selectolax` or BeautifulSoup |
-| Slack | Slack Bolt + Socket Mode |
-| Email | Gmail API |
-| GitHub | GitHub API |
-| Resume template | DOCX |
-| DOCX manipulation | `python-docx` / `docxtpl` |
-| PDF conversion | LibreOffice headless |
-| PDF validation | `pypdf` |
-| Scheduler | APScheduler initially |
-| CLI | Typer |
-| Optional local API | FastAPI |
-| Testing | pytest |
-| AI API | OpenAI Responses API |
+| Layer              | Technology                      |
+| ------------------ | ------------------------------- |
+| Language           | Python 3.12+                    |
+| Package management | `uv`                          |
+| Workflow engine    | LangGraph                       |
+| Primary database   | SQLite                          |
+| ORM                | SQLAlchemy 2.x                  |
+| Migration          | Alembic                         |
+| Validation         | Pydantic                        |
+| Browser            | Playwright                      |
+| HTTP               | `httpx`                       |
+| HTML parsing       | `selectolax` or BeautifulSoup |
+| Slack              | Slack Bolt + Socket Mode        |
+| Email              | Gmail API                       |
+| GitHub             | GitHub API                      |
+| Resume template    | Google DOC                      |
+| DOCX manipulation  | `python-docx` / `docxtpl`   |
+| PDF conversion     | LibreOffice headless            |
+| PDF validation     | `pypdf`                       |
+| Scheduler          | APScheduler initially           |
+| CLI                | Typer                           |
+| Optional local API | FastAPI                         |
+| Testing            | pytest                          |
+| AI API             | OpenAI Responses API            |
 
 Structured Outputs using JSON Schema should be preferred over free-form model responses. citeturn916121search7
 
@@ -405,11 +405,13 @@ Structured Outputs using JSON Schema should be preferred over free-form model re
 │   └── browser-sessions/
 │
 ├── source/
-│   ├── NDanddank_resume.docx
+│   ├── NDanddank_resume.gdoc
 │   ├── AcademicRecord2022May_MSU_s.pdf
 │   └── other-approved-source-files/
 │
 ├── resumes/
+│   ├── NDanddank_resume.gdoc
+│   ├── NDanddank_resume.pdf
 ├── cover-letters/
 ├── applications/
 ├── screenshots/
@@ -2579,7 +2581,7 @@ source resume template
 ## Template
 
 ```text
-source/NDanddank_resume.docx
+source/NDanddank_resume.gdoc
 ```
 
 ## Outputs
@@ -2588,7 +2590,7 @@ Example:
 
 ```text
 resumes/
-NDanddank_resume_NVIDIA_RoboticsSWE_09092026.docx
+NDanddank_resume_NVIDIA_RoboticsSWE_09092026.gdoc
 NDanddank_resume_NVIDIA_RoboticsSWE_09092026.pdf
 ```
 
@@ -2664,7 +2666,7 @@ Outputs:
 
 ```text
 cover-letters/
-NDanddank_CoverLetter_<Company>_<Role>_<Date>.docx
+NDanddank_CoverLetter_<Company>_<Role>_<Date>.gdoc
 ```
 
 and PDF when required.
@@ -3399,17 +3401,17 @@ IRREVERSIBLE_EXTERNAL_WRITE
 
 Examples:
 
-| Tool | Permission |
-|---|---|
-| Read SQLite | READ_ONLY |
-| Read job webpage | READ_ONLY |
-| Save resume | LOCAL_WRITE |
-| Update DB | LOCAL_WRITE |
-| Fill application field | REVERSIBLE_EXTERNAL_WRITE |
-| Create account | REVERSIBLE_EXTERNAL_WRITE |
-| Create Gmail draft | REVERSIBLE_EXTERNAL_WRITE |
-| Submit application | IRREVERSIBLE_EXTERNAL_WRITE |
-| Send email | IRREVERSIBLE_EXTERNAL_WRITE |
+| Tool                   | Permission                  |
+| ---------------------- | --------------------------- |
+| Read SQLite            | READ_ONLY                   |
+| Read job webpage       | READ_ONLY                   |
+| Save resume            | LOCAL_WRITE                 |
+| Update DB              | LOCAL_WRITE                 |
+| Fill application field | REVERSIBLE_EXTERNAL_WRITE   |
+| Create account         | REVERSIBLE_EXTERNAL_WRITE   |
+| Create Gmail draft     | REVERSIBLE_EXTERNAL_WRITE   |
+| Submit application     | IRREVERSIBLE_EXTERNAL_WRITE |
+| Send email             | IRREVERSIBLE_EXTERNAL_WRITE |
 
 The permission system must live below the agent/model layer.
 
@@ -4129,7 +4131,7 @@ Stop after Phase 6.
 Implement Phase 7: Resume and Cover Letter.
 
 Resume template:
-source/NDanddank_resume.docx
+resumes/NDanddank_resume.gdoc
 
 Requirements:
 - copy template
@@ -4139,7 +4141,7 @@ Requirements:
 - project retrieval
 - Terra planning
 - Sol finalization where configured
-- save DOCX
+- save GDOC
 - convert PDF
 - deterministic PDF page count
 - compression loop until one page
@@ -4147,12 +4149,12 @@ Requirements:
 - artifact DB records
 
 Naming:
-NDanddank_resume_<Company>_<Position>_<MMDDYYYY>.docx/pdf
+NDanddank_resume_<Company>_<Position>_<MMDDYYYY>.gdoc/pdf
 
 Implement cover-letter generation using verified facts.
 
 Naming:
-NDanddank_CoverLetter_<Company>_<Position>_<MMDDYYYY>.docx/pdf
+NDanddank_CoverLetter_<Company>_<Position>_<MMDDYYYY>.gdoc/pdf
 
 Important:
 No invented claims.
@@ -4167,7 +4169,7 @@ Acceptance:
 - PDF exists
 - exactly one page
 - hashes recorded
-- crash after DOCX can resume without duplicate artifact confusion
+- crash after GDOC can resume without duplicate artifact confusion
 - no output outside project root
 
 Create FORM_PROCESS task only after successful resume artifact validation.

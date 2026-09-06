@@ -14,11 +14,12 @@ from job_hunting_machine.config import ConfigurationError, load_settings
 from job_hunting_machine.database.engine import DATABASE_PATH, Database, DatabaseError
 from job_hunting_machine.knowledge.cli import app as catalog_app
 from job_hunting_machine.observability.logging import configure_logging
+from job_hunting_machine.resume.cli import app as resume_app
 from job_hunting_machine.security.paths import PROJECT_ROOT
 
 app = typer.Typer(
     name="jhm",
-    help="Job Hunting Machine: Phase 6 candidate knowledge. Live access requires opt-in.",
+    help="Job Hunting Machine: Phase 7 resume artifacts. Live access requires opt-in.",
     no_args_is_help=True,
     add_completion=False,
     pretty_exceptions_enable=False,
@@ -26,6 +27,7 @@ app = typer.Typer(
 database_app = typer.Typer(help="Local Alembic migration and policy seed administration.")
 app.add_typer(database_app, name="db")
 app.add_typer(catalog_app, name="catalog")
+app.add_typer(resume_app, name="resume")
 
 
 @app.command()
@@ -62,7 +64,8 @@ def show_config(
                 "project_root": str(settings.project_root),
                 "configured_runtime_mode": settings.runtime_mode.value,
                 "log_level": settings.log_level,
-                "phase": 6,
+                "phase": 7,
+                "resume_artifacts_available": True,
                 "candidate_knowledge_available": True,
                 "qualification_available": True,
                 "slack_control_available": True,

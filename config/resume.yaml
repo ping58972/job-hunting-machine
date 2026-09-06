@@ -1,0 +1,9 @@
+# Native Google Docs remain cloud documents; local GDOC files are pointers.
+template: /Users/ping58972/Documents/job-hunting-machine/source/NDanddank_resume.gdoc
+output_root: /Users/ping58972/Documents/job-hunting-machine/resumes
+max_compression_rounds: 8
+sol_finalization: true
+# Enqueue a cover letter after the resume and hold FORM_PROCESS until both validate.
+cover_letter: false
+# Populate only after reviewing a RESUME_TEMPLATE proposal with catalog decide.
+template_fact_id: null
