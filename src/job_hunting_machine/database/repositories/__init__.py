@@ -26,6 +26,12 @@ from job_hunting_machine.database.repositories.knowledge import (
     CandidateFactRepository,
     CatalogRepository,
 )
+from job_hunting_machine.database.repositories.outreach import (
+    ContactRepository,
+    ContactUpsert,
+    OutreachCreate,
+    OutreachDraftRepository,
+)
 from job_hunting_machine.database.repositories.tasks import TaskCreate, TaskRepository
 
 __all__ = [
@@ -43,11 +49,15 @@ __all__ = [
     "CandidateFactRepository",
     "CatalogRepository",
     "ConcurrentUpdateError",
+    "ContactRepository",
+    "ContactUpsert",
     "FormAnswerRepository",
     "FormInformationRepository",
     "InformationUpsert",
     "JobCreate",
     "JobRepository",
+    "OutreachCreate",
+    "OutreachDraftRepository",
     "RecordNotFoundError",
     "ReplayConflictError",
     "SessionCheckpoint",

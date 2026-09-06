@@ -232,7 +232,12 @@ class SlackControlPlane:
                 application_id=approval.application_id,
                 approval_id=approval_id,
                 approval_type=cast(
-                    Literal["PREPARE_APPLICATION", "SUBMIT_APPLICATION"],
+                    Literal[
+                        "PREPARE_APPLICATION",
+                        "SUBMIT_APPLICATION",
+                        "SEND_EMAIL",
+                        "SEND_EXTERNAL_MESSAGE",
+                    ],
                     approval.approval_type,
                 ),
                 payload_sha256=approval.payload_sha256,

@@ -331,9 +331,24 @@ class ExternalActionService:
             now = format_utc(self.queue.clock.now())
             if result.outcome is SubmissionOutcome.CONFIRMED:
                 action.action_status = "SUCCEEDED"
-                app.pipeline_stage = "SUBMISSION"
+                app.pipeline_stage = "POST_SUBMISSION"
                 app.application_status = details.application_status = "SUBMITTED"
                 details.submitted_at = details.submitted_at or now
+                connector = TaskRepository(session, self.queue.clock, self.queue.ids).create(
+                    TaskCreate(
+                        "CONNECT_CONTACTS",
+                        task_status="READY",
+                        application_id=application_id,
+                        job_id=app.job_id,
+                        parent_task_id=lease.task_id,
+                        dedupe_key=f"connect_contacts:{application_id}",
+                        payload={
+                            "application_id": application_id,
+                            "source_urls": [details.job_url],
+                        },
+                    )
+                )
+                app.current_task_id = connector.task_id
             elif result.outcome is SubmissionOutcome.UNKNOWN:
                 action.action_status = "UNKNOWN_RESULT"
                 app.pipeline_stage = "SUBMISSION"

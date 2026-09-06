@@ -42,7 +42,8 @@ IdGenerator, and PathGuard APIs. Use guarded helpers for application file writes
 validate_write alone does not protect a subsequent unguarded write.
 Do not make the fixed project-root boundary configurable.
 Only use static, non-sensitive event, agent, and status tokens in logs.
-Phase 9 owns immutable review, approval, submission, and reconciliation; do not start Phase 10.
+Phase 10 owns public contact discovery, outreach drafts, Gmail drafts, and approval-bound email
+sending; do not start Phase 11 monitoring.
 Form Agent interfaces must never expose a final-submit operation or activate a submit control.
 Require a hash-bound PREPARE_APPLICATION approval before the first browser mutation.
 CAPTCHA, MFA, sensitive fields, unsupported ATS portals, and ambiguous fields pause for a human.
@@ -60,6 +61,9 @@ Unknown authorization evidence requires review. Only the dedicated Submission Ag
 the final click, after LIVE mode, current authorized-user approval, exact review hash, application
 state, and idempotency checks all pass. UNKNOWN_RESULT must reconcile without another click.
 Slack callbacks record decisions only; they must never submit applications.
+Connector Agent cannot send outreach. Only the dedicated Outreach Sender may send email after a
+current SEND_EMAIL approval matches recipient, subject, body, and attachment hashes.
+LinkedIn outreach remains a reviewed manual draft; never browse or send through automation.
 Slack transport defaults to fake; live Socket Mode requires explicit opt-in.
 Route Slack sends through ExternalActionService and keep outbound templates closed.
 OpenAI SDK imports and requests belong only in models/client.py, called by ModelGateway.

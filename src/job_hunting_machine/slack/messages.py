@@ -28,7 +28,10 @@ class OutboundMessage(BaseModel):
     task_id: str
     application_id: str | None = None
     approval_id: str | None = None
-    approval_type: Literal["PREPARE_APPLICATION", "SUBMIT_APPLICATION"] | None = None
+    approval_type: (
+        Literal["PREPARE_APPLICATION", "SUBMIT_APPLICATION", "SEND_EMAIL", "SEND_EXTERNAL_MESSAGE"]
+        | None
+    ) = None
     payload_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     notice: Notice | None = None
     question: Question | None = None
@@ -55,9 +58,13 @@ class OutboundMessage(BaseModel):
         heading = {
             "notice": "Task update",
             "approval": (
-                "Application ready for submission review"
-                if self.approval_type == "SUBMIT_APPLICATION"
-                else "Application preparation approval requested"
+                "Email outreach ready for review"
+                if self.approval_type in {"SEND_EMAIL", "SEND_EXTERNAL_MESSAGE"}
+                else (
+                    "Application ready for submission review"
+                    if self.approval_type == "SUBMIT_APPLICATION"
+                    else "Application preparation approval requested"
+                )
             ),
             "question": "Missing information requested",
         }[self.kind]
@@ -91,7 +98,11 @@ class OutboundMessage(BaseModel):
                                 "approve",
                                 "Approve submission"
                                 if self.approval_type == "SUBMIT_APPLICATION"
-                                else "Approve preparation",
+                                else (
+                                    "Approve email"
+                                    if self.approval_type in {"SEND_EMAIL", "SEND_EXTERNAL_MESSAGE"}
+                                    else "Approve preparation"
+                                ),
                             ),
                             ("reject", "Reject"),
                         )
