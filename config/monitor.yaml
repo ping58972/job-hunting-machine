@@ -1,0 +1,9 @@
+version: 1
+max_gmail_messages_per_run: 25
+max_portal_checks_per_run: 10
+transition_confidence: 0.90
+destructive_confidence: 0.95
+submitted_checks_per_day: 1
+under_review_checks_per_day: 1
+interview_checks_per_day: 2
+retry_delays_seconds: [30, 120, 600, 1800]

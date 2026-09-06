@@ -348,6 +348,17 @@ class ExternalActionService:
                         },
                     )
                 )
+                TaskRepository(session, self.queue.clock, self.queue.ids).create(
+                    TaskCreate(
+                        "MONITOR_APPLICATION",
+                        task_status="READY",
+                        application_id=application_id,
+                        job_id=app.job_id,
+                        parent_task_id=lease.task_id,
+                        dedupe_key=f"monitor:{application_id}:initial",
+                        payload={"application_id": application_id},
+                    )
+                )
                 app.current_task_id = connector.task_id
             elif result.outcome is SubmissionOutcome.UNKNOWN:
                 action.action_status = "UNKNOWN_RESULT"

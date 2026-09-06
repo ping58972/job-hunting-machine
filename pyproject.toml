@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "job-hunting-machine"
 version = "0.1.0"
-description = "Approval-bound job application and outreach workflow (Architecture v2, Phase 10)"
+description = "Approval-bound job workflow with application monitoring (Architecture v2, Phase 11)"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

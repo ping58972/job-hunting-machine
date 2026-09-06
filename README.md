@@ -1,6 +1,6 @@
 # Job Hunting Machine
 
-Phase 10 extends the local Python foundation for [Architecture v2](docs/architecture-v2.md).
+Phase 11 extends the local Python foundation for [Architecture v2](docs/architecture-v2.md).
 It provides safe file writes, validated configuration, UTC clocks, ULID identifiers,
 structured logging, an Alembic-managed SQLite database, audited repositories, and a local
 administration CLI. Durable workers now run deterministic fixtures with leases,
@@ -11,6 +11,21 @@ an approval-bound Submission Agent with conservative unknown-result reconciliati
 ModelGateway provides budgeted, structured OpenAI Responses
 infrastructure with mock transport by default. Qualification uses deterministic policy first and optional budgeted semantic checks. Slack control now supports durable intake, questions,
 notifications, and approval decisions, with fake transport by default.
+
+Phase 11 adds rate-limited active-application scheduling, bounded read-only Gmail and portal
+sources, deterministic application matching, Luna-only semantic status classification through
+ModelGateway, root-local evidence, durable Monitor Events, strict state transitions, and Slack
+notification only after a meaningful committed change. Terminal applications are excluded.
+
+```bash
+uv run --locked jhm monitor schedule
+uv run --locked jhm monitor worker
+```
+
+The worker command reports offline capability by default. Network-free fixtures require
+`--staging`. Live reads require configured `LIVE`, `--live`, `GMAIL_MONITOR_ALLOW_LIVE=1`,
+`PORTAL_MONITOR_ALLOW_LIVE=1`, `OPENAI_ALLOW_LIVE=1`, and short-lived credentials. Gmail
+monitoring exposes search/read only. See [application monitoring](docs/application-monitor.md).
 
 Phase 8 form preparation remains documented in [browser and form preparation](docs/form-preparation.md).
 The default form command is offline:
@@ -115,6 +130,7 @@ a runtime. The explicit `jhm worker` command runs only synthetic workflows in DR
 even if configuration says LIVE. Slack connectivity requires separate explicit opt-in. Real-site
 form preparation and final submission use independent explicit gates.
 Contact discovery, Gmail drafts, and email sending have separate Phase 10 gates.
+Gmail and portal monitoring have separate Phase 11 read-only gates.
 
 ```bash
 uv run --locked jhm --help
@@ -141,6 +157,7 @@ The package uses a `src` layout under `src/job_hunting_machine`:
 | `browser/` | Playwright, ATS adapters, canonical fields, approvals, actions, and Form Agent |
 | `submission/` | Immutable review payloads, final-action ledger, Submission Agent, and reconciliation |
 | `outreach/` | Public contact evidence, ranked drafts, Gmail actions, and Outreach Sender |
+| `monitor/` | Active scheduling, Gmail/portal reads, status classification, evidence, and transitions |
 
 SQLAlchemy and Alembic implement the 23 Architecture v2 domain tables. The separate
 Alembic version table tracks schema revision `0001_architecture_v2`.
@@ -305,7 +322,7 @@ and persistence across restarts. Queue acceptance tests also terminate a subproc
 mid-workflow, resume saved nodes, fence stale writers, and preserve human interrupts.
 No test uses an external service.
 
-See [the Phase 10 implementation report](docs/phase-reports/phase10-report.md) for
+See [the Phase 11 implementation report](docs/phase-reports/phase11-report.md) for
 the executed commands, acceptance results, and limitations. Existing candidate
 documents remain untouched and ignored by Git. The [Phase 0 report](docs/phase-reports/phase0-report.md)
 and [Phase 1 report](docs/phase-reports/phase1-report.md) are preserved as historical
@@ -313,7 +330,7 @@ evidence, together with the [Phase 2 report](docs/phase-reports/phase2-report.md
 The [Phase 3 report](docs/phase-reports/phase3-report.md) is also preserved.
 The [Phase 4 report](docs/phase-reports/phase4-report.md) is preserved.
 The [Phase 5 report](docs/phase-reports/phase5-report.md) is preserved.
-The prior phase reports remain historical evidence. Phase 11 has not started.
+The prior phase reports remain historical evidence. Phase 12 has not started.
 
 ## Slack control plane
 

@@ -14,6 +14,7 @@ from job_hunting_machine.browser.cli import app as form_app
 from job_hunting_machine.config import ConfigurationError, load_settings
 from job_hunting_machine.database.engine import DATABASE_PATH, Database, DatabaseError
 from job_hunting_machine.knowledge.cli import app as catalog_app
+from job_hunting_machine.monitor.cli import app as monitor_app
 from job_hunting_machine.observability.logging import configure_logging
 from job_hunting_machine.outreach.cli import app as outreach_app
 from job_hunting_machine.resume.cli import app as resume_app
@@ -22,7 +23,7 @@ from job_hunting_machine.submission.cli import app as submission_app
 
 app = typer.Typer(
     name="jhm",
-    help="Job Hunting Machine: Phase 10 contact discovery and approval-bound outreach.",
+    help="Job Hunting Machine: Phase 11 application monitoring.",
     no_args_is_help=True,
     add_completion=False,
     pretty_exceptions_enable=False,
@@ -34,6 +35,7 @@ app.add_typer(resume_app, name="resume")
 app.add_typer(form_app, name="form")
 app.add_typer(submission_app, name="submission")
 app.add_typer(outreach_app, name="outreach")
+app.add_typer(monitor_app, name="monitor")
 
 
 @app.command()
@@ -70,7 +72,8 @@ def show_config(
                 "project_root": str(settings.project_root),
                 "configured_runtime_mode": settings.runtime_mode.value,
                 "log_level": settings.log_level,
-                "phase": 10,
+                "phase": 11,
+                "application_monitor_available": True,
                 "outreach_available": True,
                 "submission_available": True,
                 "form_preparation_available": True,

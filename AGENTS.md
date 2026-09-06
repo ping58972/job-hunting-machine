@@ -42,8 +42,10 @@ IdGenerator, and PathGuard APIs. Use guarded helpers for application file writes
 validate_write alone does not protect a subsequent unguarded write.
 Do not make the fixed project-root boundary configurable.
 Only use static, non-sensitive event, agent, and status tokens in logs.
-Phase 10 owns public contact discovery, outreach drafts, Gmail drafts, and approval-bound email
-sending; do not start Phase 11 monitoring.
+Phase 11 owns read-only Gmail and portal monitoring, durable evidence, validated application
+status transitions, and meaningful-change notifications; do not start Phase 12 reliability work.
+Terminal applications are never scheduled or portal-read. Low-confidence or invalid transitions
+remain auditable observations and must not change application state.
 Form Agent interfaces must never expose a final-submit operation or activate a submit control.
 Require a hash-bound PREPARE_APPLICATION approval before the first browser mutation.
 CAPTCHA, MFA, sensitive fields, unsupported ATS portals, and ambiguous fields pause for a human.
