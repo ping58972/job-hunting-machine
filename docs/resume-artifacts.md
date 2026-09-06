@@ -1,146 +1,100 @@
-# Phase 7: Resume and cover-letter artifacts
+# Local LaTeX resume and cover-letter artifacts
 
-The worker copies the native Google document referenced by
-`source/NDanddank_resume.gdoc`. A `.gdoc` is a pointer, not a self-contained document.
-Copying its bytes would still refer to the original. Phase 7 uses Drive `files.copy`,
-then scoped Google Docs edits, preserving native tables, tab order, headers, footers,
-paragraph styles, list structure, fonts, margins, and protected text.
+Architecture Amendment A1 makes `source/NDanddank_resume.tex` the only authoritative resume
+template. Normal processing reads this file and never modifies it. The ignored
+`resumes/NDanddank_resume.tex` file is retained only as a legacy reference snapshot and is never a
+runtime input.
 
-The supplied template was inspected read-only. It has one tab and a 19-row header
-table containing the resume. The edit planner found six PROJECTS content paragraphs;
-it does not assume that resume text lives in the document body.
+## Marker contract
 
-## Evidence and configuration
+The resume template must contain each marker exactly once and in this order:
 
-`config/resume.yaml` controls the template pointer, root-confined output directory,
-compression limit, optional Sol finalization, and whether a cover letter is required.
-Model routes and budgets remain in `config/models.yaml`.
-
-Candidate facts must be current VERIFIED records with valid local source hashes,
-quotes, and current project commits. Deterministic retrieval filters facts and projects
-against the job requirements before Terra selects fact IDs. Optional Sol finalization
-can only reorder or remove the planning selections. It cannot introduce claims.
-Projects render exact verified statements; skills render their verified canonical names.
-This deliberately requires useful, human-reviewed claim wording in the knowledge base.
-
-The retained template content also requires explicit verification. To prepare its review:
-
-1. Supply a short-lived `GOOGLE_ACCESS_TOKEN` securely in the process environment and
-   explicitly set `GOOGLE_DOCS_ALLOW_LIVE=1`. No token is stored in artifacts or task memory.
-2. Run `uv run --locked jhm resume template-propose --live-docs --folder-id <private-folder-id>`.
-   This reads the source, saves local evidence, and creates an **UNVERIFIED** RESUME_TEMPLATE
-   fact. It does not edit the source or grant verification.
-3. Inspect the proposal and its source with `jhm catalog facts`. Review the retained
-   candidate claims, then use the existing `jhm catalog decide <fact-id> VERIFIED
-   --value-sha256 <inspected-hash> --reviewer <reviewer>` command.
-4. Set `template_fact_id` in `config/resume.yaml` to that reviewed fact's ID.
-
-Verification is rechecked before native copying and before artifact publication. A revoked
-fact, changed protected template content, or changed source evidence prevents FORM_READY.
-Do not mark a template VERIFIED merely because it exists or came from a previous resume.
-
-## Execution
-
-All commands run from the fixed project root, using Python 3.12+ and uv:
-
-```bash
-mkdir -p .tmp
-export TMPDIR="$PWD/.tmp"
-uv run --locked jhm resume worker --once
+```latex
+% JHM:PROJECTS:START
+% JHM:PROJECTS:END
+% JHM:SKILLS:START
+% JHM:SKILLS:END
 ```
 
-This default command only reports offline capability; it does not consume a task.
-Tests inject `FakeDocuments` and a scripted mock `ModelGateway`, with sockets blocked.
+Only text between each matching pair is machine-owned. Regions may not overlap. Missing,
+duplicated, reversed, or overlapping markers stop the task before a generated file is written.
+Template-authored LaTeX outside those regions is copied byte-for-byte.
 
-For explicitly authorized real generation, also supply the existing OpenAI process
-credentials and `OPENAI_ALLOW_LIVE=1`, then run:
+The cover-letter template is `source/NDanddank_cover_letter.tex` and uses one
+`JHM:COVER_LETTER` marker pair. Plain-text values are escaped before insertion; template commands
+are not globally escaped.
 
-```bash
-uv run --locked jhm resume worker --live-docs --live-models \
-  --folder-id <private-folder-id> --once
-```
-
-Omit `--once` for the lease/heartbeat worker loop with graceful shutdown and startup recovery.
-The application must already have a READY BUILD_RESUME task from qualification.
-No form worker or submission implementation is registered by this command.
-
-Native requests are limited to read, copy/create, scoped edit, and PDF export. Document
-mutations pass through `resume.actions.ExternalActionService`, using the existing audited
-external-actions ledger. No sharing/permissions, email, browser, or submission API is exposed.
-The HTTP transport uses fixed Google API origins, bounded timeouts, no redirects, and no
-automatic credential refresh. RuntimeMode alone never enables a provider.
-
-## Output and validation
-
-Output directories include Application ID, Task ID, and compression round to prevent
-same-company/title/date collisions. Required basenames remain:
+## Pipeline
 
 ```text
-resumes/<application-id>/<task-id>/round-N/
-  NDanddank_resume_<Company>_<Position>_<MMDDYYYY>.gdoc
-  NDanddank_resume_<Company>_<Position>_<MMDDYYYY>.pdf
-  NDanddank_resume_<Company>_<Position>_<MMDDYYYY>.snapshot.json
-
-cover-letters/<application-id>/<task-id>/round-N/
-  NDanddank_CoverLetter_<Company>_<Position>_<MMDDYYYY>.gdoc
-  NDanddank_CoverLetter_<Company>_<Position>_<MMDDYYYY>.pdf
-  NDanddank_CoverLetter_<Company>_<Position>_<MMDDYYYY>.snapshot.json
+current VERIFIED facts and project evidence
+  -> deterministic retrieval
+  -> Terra selection and configured Sol finalization through ModelGateway
+  -> marker-scoped LaTeX rendering
+  -> immutable job-specific TEX
+  -> LatexCompiler
+  -> PDF validation and deterministic page count
+  -> TEX/PDF artifact registration in one database transaction
+  -> application-specific PDF selected by Form Agent
 ```
 
-Names use the central clock's UTC generation date, frozen for the task across restarts.
-Unsafe filename characters become underscores; directory identities prevent collisions.
-PathGuard performs every application file write. Existing differing bytes are never silently
-overwritten. Source documents, fake stores, snapshots, credentials and outputs remain out of Git.
+Generated paths include Application ID, Task ID, artifact version, and compression round. Their
+human-readable base names are:
 
-Each accepted bundle has three artifact rows: PDF, GDOC pointer, native JSON snapshot.
-Architecture v2's artifact enum has no GDOC variant, so pointers and snapshots use `OTHER`
-with their correct MIME types; no GDOC is mislabeled as DOCX. No schema change is necessary.
-Each row has a central ART-prefixed ID and SHA-256. The pointer additionally binds the cloud
-document ID, revision, and snapshot hash. A hash of a GDOC pointer alone does not prove content.
-Artifacts remain unapproved for submission.
+```text
+NDanddank_resume_<Company>_<Position>_<MMDDYYYY>.tex
+NDanddank_resume_<Company>_<Position>_<MMDDYYYY>.pdf
+NDanddank_CoverLetter_<Company>_<Position>_<MMDDYYYY>.tex
+NDanddank_CoverLetter_<Company>_<Position>_<MMDDYYYY>.pdf
+```
 
-The worker verifies native structure, unchanged protected content, generated text and styles,
-then exports PDF and checks that the document did not change during export. Pypdf parses the
-actual PDF page tree; text extraction checks that expected content is present, including header
-text. A multi-page result drops the lowest-ranked whole fact, rerenders, and counts again.
-The loop is bounded and retains at least one project fact and one skill. It never truncates
-qualifiers or metrics, shrinks fonts/margins, or reconstructs the resume as DOCX.
+`LatexCompiler` detects `latexmk`, then `pdflatex`, then `tectonic` unless configuration puts a
+different supported backend first. It invokes an argument array with `shell=False`, a bounded
+timeout, and an output directory under `data/latex-build/<task-id>/`. It never downloads a
+compiler and never falls back to a cloud document service. `compilation.json` retains bounded
+diagnostic metadata; auxiliary files stay in the ignored build directory.
 
-If `cover_letter: true`, successful resume publication creates BUILD_COVER_LETTER and holds
-the application in the RESUME stage. The cover letter uses the selected resume's verified
-facts and static introductory/closing prose. It also has a bounded one-page compression loop.
-Only after all configured artifacts validate does one transaction record their hashes,
-update application details, append audit events, set FORM_READY, and create READY FORM_PROCESS.
-Failure rolls back the entire publication; worker failures alone do not change business state.
+The resume is accepted only when `pypdf` can parse a nonempty, unencrypted PDF with exactly one
+page. Overflow drops the lowest-ranked verified content and recompiles, up to
+`max_compression_rounds`. The loop never changes font size, geometry, margins, spacing, or global
+style. Exhaustion pauses for review.
 
-## Recovery and limits
+## Truth and recovery
 
-Task memory points to immutable, content-addressed run snapshots. IDs, date, policy, selected
-facts, model intent/result, copy identity, pre-edit revision, compression round, and artifact
-metadata survive restart. Checkpoint graph logic contains none of these effects.
+The model may select only IDs from the deterministic pool of current VERIFIED candidate facts.
+The worker rechecks those facts and the master template hash before publishing. It escapes
+inserted plain text including `#`, `$`, `%`, `&`, `_`, braces, tildes, carets, and backslashes.
 
-Copy intent is recorded before dispatch. After an uncertain copy, the service searches Drive
-appProperties for its action ID; absence or multiple matches requires review instead of a
-second blind copy. Edits use a sealed pre-edit revision and readback: an already applied
-edit is accepted, a conflicting revision is rejected. A crash after GDOC creation or artifact
-publication cannot create duplicate artifact rows or another FORM_PROCESS task.
+Durable state records these checkpoints:
 
-An interrupted model request is not automatically billed again; existing budget reservations
-remain governed by ModelGateway. Unresolved model outcomes, altered artifacts, insufficient
-facts, clipping/unextractable PDF text, unsupported template structures, or exhausted
-compression require review. WAITING_HUMAN contains an interrupt usable through QueueService's
-audited resume API. A resume requests a retry only; it does not approve facts, override
-format checks, or release uncertain budgets. Changed policy/selection generally needs a fresh
-task after canceling/reconciling the old one, rather than editing its sealed snapshot.
+```text
+TEMPLATE_VALIDATED
+FACTS_RETRIEVED
+PROJECTS_SELECTED
+SKILLS_SELECTED
+TEX_GENERATED
+TEX_SAVED
+PDF_COMPILED
+PDF_VALIDATED
+ONE_PAGE_CONFIRMED
+ARTIFACTS_REGISTERED
+```
 
-The cloud document can still be edited after export. The snapshot and PDF represent the
-validated revision, not a permanent lock on Google Docs. Submission approval and any later
-artifact revalidation belong to later phases. Fixed table geometry may make some selections
-impossible to fit without a separately reviewed template revision. The integration's live
-copy/edit/export rendering has not been exercised against a real application in this phase;
-tests use native JSON fixtures and real synthetic PDFs, plus mocked HTTP contracts.
+If a process dies after TEX or PDF creation, immutable paths and hashes let the recovered worker
+reuse matching output. Conflicting bytes fail closed. Repeated generation uses a new artifact
+version; older versions remain available for audit. `application_details` identifies the active
+resume and cover-letter PDF.
 
-API references: [Google Docs batch updates](https://developers.google.com/workspace/docs/api/reference/rest/v1/documents/batchUpdate),
-[request ranges and tab/segment targeting](https://developers.google.com/workspace/docs/api/reference/rest/v1/documents/request),
-[Drive file properties](https://developers.google.com/workspace/drive/api/guides/properties),
-[Drive export](https://developers.google.com/workspace/drive/api/guides/manage-downloads).
+## Operator commands
+
+```bash
+uv run --locked jhm resume check
+
+export OPENAI_ALLOW_LIVE=1
+export OPENAI_API_KEY='key-from-secure-storage'
+uv run --locked jhm resume worker --live-models --once
+```
+
+The first command performs no generation or network access. The worker uses local LaTeX for
+documents; the flag enables only the separately gated model gateway. DRY_RUN remains the global
+default. No document command submits an application or sends a message.

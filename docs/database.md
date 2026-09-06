@@ -193,3 +193,11 @@ Phase 2 reuses the existing queue and memory schema and adds a separate LangGrap
 checkpoint database. No application schema migration was needed. There is no
 business integration. Phase 3 adds ModelGateway and audited budget reservations in
 the existing model_usage table. See [model-gateway.md](model-gateway.md). Phase 4 has not started.
+
+## Architecture Amendment A1 artifact migration
+
+Alembic revision `0002_latex_artifacts` adds `RESUME_TEX` and `COVER_LETTER_TEX`. The constraint
+retains `RESUME_DOCX` and `COVER_LETTER_DOCX` so historical rows survive migration, while
+`ArtifactRepository.create` rejects new legacy document artifacts. Current document workers create
+same-version TEX/PDF pairs. Application detail pointers identify the active PDF; its TEX partner is
+correlated by exact Application ID, Task ID, and artifact version.

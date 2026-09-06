@@ -1,9 +1,13 @@
-# Native Google Docs remain cloud documents; local GDOC files are pointers.
-template: /Users/ping58972/Documents/job-hunting-machine/source/NDanddank_resume.gdoc
-output_root: /Users/ping58972/Documents/job-hunting-machine/resumes
+# Architecture Amendment A1: local LaTeX is authoritative for application documents.
+resume_template: source/NDanddank_resume.tex
+cover_letter_template: source/NDanddank_cover_letter.tex
+resume_output_dir: resumes
+cover_letter_output_dir: cover-letters
+build_root: data/latex-build
+preferred_compiler: latexmk
+timeout_seconds: 60
+required_pages: 1
 max_compression_rounds: 8
 sol_finalization: true
 # Enqueue a cover letter after the resume and hold FORM_PROCESS until both validate.
 cover_letter: false
-# Populate only after reviewing a RESUME_TEMPLATE proposal with catalog decide.
-template_fact_id: null

@@ -162,7 +162,7 @@ def test_doctor_detects_application_status_conflict(database: Database) -> None:
 
 def test_missing_source_resume_fails_closed(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="source_resume_template_missing"):
-        ResumePolicy(template=tmp_path / "missing.gdoc", output_root=tmp_path).validate_paths()
+        ResumePolicy(resume_template=tmp_path / "missing.tex").validate_paths()
 
 
 def test_evaluation_datasets_are_versioned_and_green() -> None:

@@ -37,6 +37,27 @@ class ReviewError(RuntimeError):
     """Review data is incomplete, changed, or cannot be made immutable."""
 
 
+def _paired_tex(
+    session: Session,
+    application_id: str,
+    pdf: Artifact,
+    artifact_type: str,
+) -> Artifact:
+    matches = list(
+        session.scalars(
+            select(Artifact).where(
+                Artifact.application_id == application_id,
+                Artifact.task_id == pdf.task_id,
+                Artifact.version == pdf.version,
+                Artifact.artifact_type == artifact_type,
+            )
+        )
+    )
+    if len(matches) != 1:
+        raise ReviewError(f"review_{artifact_type.casefold()}_missing_or_ambiguous")
+    return matches[0]
+
+
 def canonical_json(value: object) -> bytes:
     return json.dumps(
         value,
@@ -72,6 +93,10 @@ def review_payload(
     if not job:
         raise ReviewError("review_job_missing")
     resume = select_artifact(session, application_id, details.resume_artifact_id, "RESUME_PDF")
+    resume_row = session.get(Artifact, resume.artifact_id)
+    assert resume_row is not None
+    resume_tex_row = _paired_tex(session, application_id, resume_row, "RESUME_TEX")
+    resume_tex = select_artifact(session, application_id, resume_tex_row.artifact_id, "RESUME_TEX")
     cover = (
         select_artifact(
             session,
@@ -82,6 +107,14 @@ def review_payload(
         if details.cover_letter_artifact_id
         else None
     )
+    cover_tex = None
+    if cover is not None:
+        cover_row = session.get(Artifact, cover.artifact_id)
+        assert cover_row is not None
+        cover_tex_row = _paired_tex(session, application_id, cover_row, "COVER_LETTER_TEX")
+        cover_tex = select_artifact(
+            session, application_id, cover_tex_row.artifact_id, "COVER_LETTER_TEX"
+        )
     answers: list[dict[str, object]] = []
     for answer in session.scalars(
         select(FormAnswer)
@@ -130,17 +163,23 @@ def review_payload(
         },
         "answers": answers,
         "resume": {
-            "artifact_id": resume.artifact_id,
-            "filename": resume.path.name,
-            "sha256": resume.sha256,
+            "tex_artifact_id": resume_tex.artifact_id,
+            "tex_filename": resume_tex.path.name,
+            "tex_sha256": resume_tex.sha256,
+            "pdf_artifact_id": resume.artifact_id,
+            "pdf_filename": resume.path.name,
+            "pdf_sha256": resume.sha256,
         },
         "cover_letter": (
             {
-                "artifact_id": cover.artifact_id,
-                "filename": cover.path.name,
-                "sha256": cover.sha256,
+                "tex_artifact_id": cover_tex.artifact_id,
+                "tex_filename": cover_tex.path.name,
+                "tex_sha256": cover_tex.sha256,
+                "pdf_artifact_id": cover.artifact_id,
+                "pdf_filename": cover.path.name,
+                "pdf_sha256": cover.sha256,
             }
-            if cover
+            if cover and cover_tex
             else None
         ),
         "other_uploads": other_uploads,

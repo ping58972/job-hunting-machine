@@ -426,8 +426,9 @@ class Artifact(Base):
     __tablename__ = "artifacts"
     __table_args__ = (
         CheckConstraint(
-            " artifact_type IN ( 'RESUME_DOCX', 'RESUME_PDF', 'COVER_LETTER_DOCX', "
-            "'COVER_LETTER_PDF', 'TRANSCRIPT', 'SCREENSHOT', 'JOB_SNAPSHOT', 'OTHER' ) "
+            " artifact_type IN ( 'RESUME_DOCX', 'RESUME_TEX', 'RESUME_PDF', "
+            "'COVER_LETTER_DOCX', 'COVER_LETTER_TEX', 'COVER_LETTER_PDF', "
+            "'TRANSCRIPT', 'SCREENSHOT', 'JOB_SNAPSHOT', 'OTHER' ) "
         ),
         CheckConstraint("approved_for_submission IN (0, 1)"),
     )

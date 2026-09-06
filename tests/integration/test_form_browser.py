@@ -12,6 +12,7 @@ from sqlalchemy import func, select
 
 from job_hunting_machine.browser import BaseAdapter
 from job_hunting_machine.browser.adapters import ADAPTERS
+from job_hunting_machine.browser.artifacts import application_artifacts
 from job_hunting_machine.browser.config import BrowserSettings, browser_settings
 from job_hunting_machine.browser.detector import adapter_for, detect_ats
 from job_hunting_machine.browser.fake import FAKE_ATS_ORIGIN, FakeATSApplication
@@ -123,6 +124,31 @@ def setup_form(database: Database, tmp_path: Path) -> tuple[QueueService, str, s
                 )
             )
     return QueueService(database), created.application_id, form_task.task_id
+
+
+def test_form_selects_only_application_pdf_not_tex_or_legacy_docx(
+    database: Database, tmp_path: Path
+) -> None:
+    _, application_id, _ = setup_form(database, tmp_path)
+    tex = PathGuard().write_text(tmp_path / "resume.tex", "local latex")
+    with database.transaction() as session:
+        tex_artifact = ArtifactRepository(session).create(
+            ArtifactCreate(
+                "RESUME_TEX",
+                str(tex),
+                hashlib.sha256(tex.read_bytes()).hexdigest(),
+                "application/x-tex",
+                application_id=application_id,
+            )
+        )
+        details = session.get(ApplicationDetails, application_id)
+        assert details
+        pdf_id = details.resume_artifact_id
+        selected = application_artifacts(session, application_id)
+        assert selected["resume"].artifact_id == pdf_id
+        details.resume_artifact_id = tex_artifact.artifact_id
+        with pytest.raises(ValueError, match="artifact_application_or_type_mismatch"):
+            application_artifacts(session, application_id)
 
 
 def approve_and_resume(database: Database, queue: QueueService, task_id: str) -> str:

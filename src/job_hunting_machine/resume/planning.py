@@ -10,7 +10,7 @@ from job_hunting_machine.database.engine import Database
 from job_hunting_machine.database.repositories.knowledge import CandidateFactRepository
 from job_hunting_machine.knowledge.retrieval import retrieve
 from job_hunting_machine.models.schemas import StructuredOutput
-from job_hunting_machine.resume.actions import ReviewRequired
+from job_hunting_machine.resume.errors import ReviewRequired
 
 
 class Selection(StructuredOutput):

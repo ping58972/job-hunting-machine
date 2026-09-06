@@ -1,0 +1,147 @@
+% Resume of Nalongsone Danddank
+% Authoritative JHM resume template. Compile through LatexCompiler.
+\documentclass[11pt,letterpaper]{article}
+
+% ---------- Fonts: Times New Roman (or a metric-compatible clone) ----------
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{mathptmx}            % Times clone for pdflatex
+  \usepackage{textcomp}
+\else
+  \usepackage{fontspec}
+  \IfFontExistsTF{Times New Roman}
+    {\setmainfont{Times New Roman}}
+    {\setmainfont{TeX Gyre Termes}}
+\fi
+
+% ---------- Page geometry ----------
+\usepackage[letterpaper,
+            left=42pt, right=36.7pt,
+            top=21.3pt, bottom=18pt,
+            headheight=0pt, headsep=0pt, footskip=0pt]{geometry}
+
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+
+\definecolor{rulegray}{HTML}{D9D9D9}
+
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0pt}
+\linespread{1.0}
+\setlength{\baselineskip}{13.5pt}
+\raggedright
+\raggedbottom
+
+% ---------- Helper macros ----------
+% Section heading: bold caps + light-gray rule below
+\newcommand{\sectionhead}[1]{%
+  \par\vspace{4.5pt}%
+  {\bfseries #1}\par\nointerlineskip
+  \vspace{5pt}%
+  {\color{rulegray}\hrule height 0.5pt}%
+  \vspace{11.7pt}%
+}
+
+% One line with left text and right-aligned text
+\newcommand{\lr}[2]{\makebox[\linewidth]{#1\hfill #2}\par}
+
+% Bullet list matching the doc (bullet at +0.8pt, text at +9pt, 13.5pt leading)
+\setlist[itemize]{label=\raisebox{-0.42ex}{\scalebox{1.45}{\textbullet}},
+                  leftmargin=9pt, labelsep=3.8pt, labelwidth=4pt,
+                  itemsep=0pt, parsep=0pt, topsep=0pt, partopsep=0pt,
+                  itemindent=0pt, listparindent=0pt}
+\usepackage{graphicx}
+
+\begin{document}
+\fontsize{11pt}{13.5pt}\selectfont
+
+% ---------- Header ----------
+\begin{center}
+  {\fontsize{16pt}{18pt}\selectfont Nalongsone Danddank} {\fontsize{10pt}{12pt}\selectfont\itshape he/him}
+\end{center}
+\vspace{14pt}
+
+\makebox[\linewidth]{%
+  (612) 900-9416\hspace{22pt}\href{mailto:ndanddank@umass.edu}{ndanddank@umass.edu}%
+  \hfill
+  \href{https://ping58972.github.io/}{ping58972.github.io}\hspace{44pt}%
+  \href{https://www.linkedin.com/in/ping58972}{linkedin.com/in/ping58972}%
+}\par
+
+\vspace{11.8pt}
+
+% ---------- EDUCATION ----------
+\sectionhead{EDUCATION}
+
+\lr{\textbf{University of Massachusetts Amherst}}{Exp. Graduation 2027}
+\lr{Manning College of Information and Computer Sciences}{Masters of Science in Computer Science}
+
+\vspace{13.5pt}
+\textbf{Courseworks:} Reinforcement Learning, Neural Network, Robotics, Software Engineering, Information Retrieval, Systems for Data Science, Machine Learing, Algorithms, Distributed Cloud Computing.\par
+
+\vspace{6pt}
+
+% ---------- WORK EXPERIENCE ----------
+\sectionhead{WORK EXPERIENCE}
+
+\lr{\textbf{Beaconfire Inc.}}{May 2022 -- May 2025}
+\vspace{5.2pt}
+\lr{\textit{Software Developer Full-time}}{Newark, NJ}
+\vspace{9pt}
+\begin{itemize}
+  \item Created sample APIs for demonstrating functionalities to the clients and coordinated with the business development team of 12 to create such APIs.
+  \item Created a serverless REST API using java for effective real-time communication among peers and within a specified geographical area, reducing monthly expenses by 31\%.
+  \item Facilitated regular brainstorming sessions with the product team, fostering innovative solutions that aligned with user needs and project goals.
+\end{itemize}
+
+\vspace{9pt}
+\lr{\textbf{Infosys Limited Inc.}}{Dec 2019 -- May 2020}
+\vspace{5.2pt}
+\lr{\textit{Software Engineer Full-time}}{Phoenix, AZ}
+\vspace{7.5pt}
+\begin{itemize}
+  \item Identified customer requirements and modified the API application adhered to that client servicing and technical\\writing and also aided the product team of 10.
+  \item Developed a new business innovation application using Java for migrating existing processes, reducing almost 80\% of manual processing time.
+  \item Worked closely with cross-functional teams to gather requirements, facilitating seamless integration of features and enhancing overall project efficiency.
+\end{itemize}
+
+\vspace{6pt}
+
+% ---------- PROJECTS ----------
+\sectionhead{PROJECTS}
+
+% JHM:PROJECTS:START
+\lr{\textit{Small LLM}: \href{https://github.com/ping58972/SmallLanguageModel}{github.com/ping58972/SmallLanguageModel}}{Sep 2025 -- Dec 2025}
+\vspace{10.5pt}
+\begin{itemize}
+  \item Built a modular Small Language Model framework in PyTorch, progressing from linear and MLP models to configurable self-attention architectures.
+  \item Developed an end-to-end training pipeline and analyzed performance--efficiency trade-offs using log-likelihood, hyperparameter sweeps, and FLOPs tracking.
+\end{itemize}
+
+\vspace{11.2pt}
+\lr{\textit{TritonRobot:} \href{https://github.com/ping58972/robotic603_finalproject}{github.com/ping58972/robotic603\_finalproject}}{Feb 2026 -- May 2026}
+\vspace{10.5pt}
+\begin{itemize}
+  \item Built an autonomous ROS robot pipeline that fuses live camera and LiDAR data with custom CNN/MobileNetV2 classifiers (99.8--100\% test accuracy) to detect, approach, and stop at a target printed symbol.
+  \item Migrated the full perception-and-control stack from ROS1 Noetic to ROS2 Jazzy with zero model changes, validating the port via automated tests.
+\end{itemize}
+% JHM:PROJECTS:END
+
+\vspace{6pt}
+
+% ---------- SKILLS ----------
+\sectionhead{SKILLS}
+
+% JHM:SKILLS:START
+\begin{itemize}
+  \item Programming Languages: Python, Java, JavaScript, C/C++, SQL, Bash, OOP, Design Patterns.
+  \item Tools: CodeX, Claude, LangChain, LangGraph, n8n, Harness, Linux, Git, Docker, AWS, Postman, Microservice.
+  \item Soft Skill: I bring adaptability, creative problem-solving, critical thinking, clear communication, and cross-cultural collaboration skills that bridge my past experiences
+\end{itemize}
+% JHM:SKILLS:END
+
+\end{document}

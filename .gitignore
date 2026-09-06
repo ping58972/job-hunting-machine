@@ -4,7 +4,9 @@
 !.env.example
 *.pem
 *.key
-/source/
+/source/*
+!/source/NDanddank_resume.tex
+!/source/NDanddank_cover_letter.tex
 /resumes/
 /cover-letters/
 
@@ -43,3 +45,11 @@ dist/
 .DS_Store
 .idea/
 .vscode/
+
+# LaTeX build byproducts (authoritative source templates above remain tracked)
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz

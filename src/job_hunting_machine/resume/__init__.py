@@ -1,1 +1,1 @@
-"""Phase 7: evidence-bound native Google Docs and validated PDF artifacts."""
+"""Evidence-bound local LaTeX and validated PDF application artifacts."""

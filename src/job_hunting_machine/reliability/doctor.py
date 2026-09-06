@@ -21,6 +21,14 @@ from job_hunting_machine.database.models import (
     ModelUsage,
 )
 from job_hunting_machine.reliability.evals import EvalDatasetError, evaluate_all
+from job_hunting_machine.resume.config import load_policy
+from job_hunting_machine.resume.latex import (
+    COVER_LETTER,
+    PROJECTS,
+    SKILLS,
+    LatexCompiler,
+    LatexTemplate,
+)
 from job_hunting_machine.runtime import RuntimeMode
 from job_hunting_machine.security.paths import PROJECT_ROOT, PathGuard
 
@@ -61,7 +69,7 @@ class Doctor:
             "busy_timeout_ms": busy,
             "ok": integrity == "ok"
             and not foreign_keys
-            and revision == "0001_architecture_v2"
+            and revision == "0002_latex_artifacts"
             and str(journal).casefold() == "wal"
             and int(busy) == 5000,
         }
@@ -268,6 +276,39 @@ class Doctor:
             ),
         ]
 
+    def _latex(self) -> list[Check]:
+        try:
+            policy = load_policy()
+            LatexTemplate(policy.resume_template.read_text(encoding="utf-8"), (PROJECTS, SKILLS))
+            resume_template = Check("latex_resume_template", "PASS", "markers_valid")
+        except (OSError, ValueError):
+            return [Check("latex_resume_template", "FAIL", "missing_or_invalid")]
+        try:
+            LatexTemplate(policy.cover_letter_template.read_text(encoding="utf-8"), (COVER_LETTER,))
+            cover_template = Check("latex_cover_letter_template", "PASS", "markers_valid")
+        except (OSError, ValueError):
+            cover_template = Check("latex_cover_letter_template", "FAIL", "missing_or_invalid")
+        compiler = LatexCompiler(
+            preferred=policy.preferred_compiler,
+            timeout_seconds=policy.timeout_seconds,
+        ).detect()
+        try:
+            self.guard.mkdir(policy.build_root, parents=True, exist_ok=True)
+            build = Check("latex_build_directory", "PASS", "root_confined_writable")
+        except (OSError, ValueError):
+            build = Check("latex_build_directory", "FAIL", "not_root_confined_writable")
+        return [
+            resume_template,
+            cover_template,
+            Check(
+                "latex_compiler",
+                "PASS" if compiler else "FAIL",
+                compiler[0] if compiler else "no_supported_latex_compiler",
+            ),
+            Check("pdf_validator", "PASS", "pypdf_available"),
+            build,
+        ]
+
     def run(self, configured_mode: RuntimeMode) -> dict[str, object]:
         checks: list[Check] = []
         try:
@@ -285,6 +326,7 @@ class Doctor:
             checks.append(Check("application_database", "FAIL", "integrity_check_failed"))
             integrity = {"ok": False}
         checks.append(self._checkpoint())
+        checks.extend(self._latex())
         checks.extend(self._source_invariants())
         checks.extend(self._files_and_rows())
         try:

@@ -51,11 +51,21 @@ Form Agent interfaces must never expose a final-submit operation or activate a s
 Require a hash-bound PREPARE_APPLICATION approval before the first browser mutation.
 CAPTCHA, MFA, sensitive fields, unsupported ATS portals, and ambiguous fields pause for a human.
 Browser storage state is private, root-confined, and must never be logged.
-Copy Google Docs natively; edit only PROJECTS and SKILLS in the resume template.
-Keep template tables, headers, paragraphs, fonts, margins and protected text intact.
-Generated claims must resolve to current VERIFIED facts; never infer metrics.
-All document mutations go through resume.actions.ExternalActionService.
-Native GDOC pointers require content snapshots and validated PDF artifacts.
+DOCUMENTS:
+Resume and cover-letter generation are root-local LaTeX workflows. Never introduce Google Docs,
+GDOC, or DOCX processing for application-document generation. Gmail and unrelated Google services
+remain separate integrations.
+The authoritative resume template is source/NDanddank_resume.tex. Never modify it during normal
+application processing; resumes/NDanddank_resume.tex is a retained legacy reference and is not a
+runtime input. Edit only the PROJECTS and SKILLS marker regions and preserve all protected LaTeX,
+fonts, geometry, margins, and layout. The cover-letter master is
+source/NDanddank_cover_letter.tex.
+Agents must use LatexCompiler and must not invoke LaTeX commands directly. Generated application
+documents are immutable TEX + PDF artifact pairs. Only the application-associated PDF may be
+uploaded. Resume PDFs must be exactly one page. Compress verified content within a bounded loop;
+do not change fonts, margins, spacing, geometry, or template design to force one page.
+Escape every plain-text value inserted into LaTeX. Generated claims must resolve to current
+VERIFIED facts; never infer metrics, technologies, experience, or other candidate claims.
 Create FORM_PROCESS only in the transaction that records validated artifacts.
 Extracted GitHub observations remain UNVERIFIED until explicit audited human review.
 Resume retrieval must use current VERIFIED facts with validated source evidence only.

@@ -6,6 +6,8 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
+from alembic import command
+from alembic.config import Config
 from sqlalchemy import inspect, text
 from sqlalchemy.exc import IntegrityError
 
@@ -82,6 +84,46 @@ def test_migration_is_repeatable_without_removing_existing_data(database: Databa
         assert session.execute(text("SELECT event_id FROM activity_log")).scalars().all() == [
             _EVENT_ID
         ]
+
+
+def test_latex_artifact_migration_preserves_legacy_docx_rows(tmp_path: Path) -> None:
+    database = Database(tmp_path / "legacy.db")
+    configuration = Config(str(PROJECT_ROOT / "alembic.ini"))
+    configuration.set_main_option(
+        "script_location",
+        str(PROJECT_ROOT / "src/job_hunting_machine/database/migrations"),
+    )
+    try:
+        with database.engine.begin() as connection:
+            configuration.attributes["connection"] = connection
+            command.upgrade(configuration, "0001_architecture_v2")
+            connection.execute(
+                text(
+                    "INSERT INTO artifacts "
+                    "(artifact_id, artifact_type, path, sha256, mime_type, created_at) VALUES "
+                    "('ART_01K4Y9DKQF0S1NHV0A84NJBYPM', 'RESUME_DOCX', 'legacy.docx', "
+                    ":sha, "
+                    "'application/vnd.openxmlformats-officedocument.wordprocessingml.document', "
+                    ":stamp)"
+                ),
+                {"sha": "a" * 64, "stamp": _TIMESTAMP},
+            )
+        database.migrate()
+        with database.transaction() as session:
+            assert session.execute(text("SELECT artifact_type FROM artifacts")).scalar_one() == (
+                "RESUME_DOCX"
+            )
+            session.execute(
+                text(
+                    "INSERT INTO artifacts "
+                    "(artifact_id, artifact_type, path, sha256, mime_type, created_at) VALUES "
+                    "('ART_01K4Y9DKQF0S1NHV0A84NJBYPN', 'RESUME_TEX', 'resume.tex', "
+                    ":sha, 'application/x-tex', :stamp)"
+                ),
+                {"sha": "b" * 64, "stamp": _TIMESTAMP},
+            )
+    finally:
+        database.dispose()
 
 
 def test_every_physical_connection_has_architecture_pragmas(database: Database) -> None:

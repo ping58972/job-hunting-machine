@@ -10,7 +10,7 @@ from typing import Any
 
 from pypdf import PdfReader
 
-from job_hunting_machine.resume.actions import ReviewRequired
+from job_hunting_machine.resume.errors import ReviewRequired
 from job_hunting_machine.security.paths import PathGuard
 
 
@@ -25,7 +25,7 @@ def filename_part(value: str) -> str:
     return value[:80]
 
 
-def pdf_pages(data: bytes, expected_text: list[str]) -> int:
+def pdf_pages(data: bytes, expected_text: list[str] | None = None) -> int:
     """Parse the actual PDF page tree and verify generated text survived export.
 
     Text checking additionally rejects one-page exports that silently clip header
@@ -44,7 +44,7 @@ def pdf_pages(data: bytes, expected_text: list[str]) -> int:
         return "".join(unicodedata.normalize("NFKC", value).split())
 
     if not count or any(
-        compact(value) not in compact(text) for value in expected_text if value.strip()
+        compact(value) not in compact(text) for value in (expected_text or []) if value.strip()
     ):
         raise ReviewRequired("pdf_content_missing_or_clipped")
     return count

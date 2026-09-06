@@ -7,6 +7,10 @@
 **Date:** 2026-09-05
 **Project Root:** `/Users/ping58972/Documents/job-hunting-machine`
 
+**Amendment:** [A1 — Local LaTeX Document Pipeline](architecture-amendments/A1-latex-document-pipeline.md)
+supersedes the original Google Docs/DOCX application-document design. The amended rules in this
+document are authoritative for resume and cover-letter processing.
+
 ---
 
 # 1. Purpose
@@ -349,9 +353,9 @@ flowchart TD
 | Slack              | Slack Bolt + Socket Mode        |
 | Email              | Gmail API                       |
 | GitHub             | GitHub API                      |
-| Resume template    | Google DOC                      |
-| DOCX manipulation  | `python-docx` / `docxtpl`   |
-| PDF conversion     | LibreOffice headless            |
+| Resume template    | Local LaTeX (`.tex`)             |
+| Document generation| Marker-scoped local LaTeX rendering |
+| PDF generation     | `latexmk` / configured LaTeX compiler |
 | PDF validation     | `pypdf`                       |
 | Scheduler          | APScheduler initially           |
 | CLI                | Typer                           |
@@ -401,16 +405,18 @@ Structured Outputs using JSON Schema should be preferred over free-form model re
 ├── data/
 │   ├── job-hunting.db
 │   ├── langgraph-checkpoints.db
+│   ├── latex-build/
 │   ├── cache/
 │   └── browser-sessions/
 │
 ├── source/
-│   ├── NDanddank_resume.gdoc
+│   ├── NDanddank_resume.tex
+│   ├── NDanddank_cover_letter.tex
 │   ├── AcademicRecord2022May_MSU_s.pdf
 │   └── other-approved-source-files/
 │
 ├── resumes/
-│   ├── NDanddank_resume.gdoc
+│   ├── NDanddank_resume_<Company>_<Position>_<Date>.tex
 │   ├── NDanddank_resume.pdf
 ├── cover-letters/
 ├── applications/
@@ -1597,8 +1603,10 @@ CREATE TABLE artifacts (
         CHECK (
             artifact_type IN (
                 'RESUME_DOCX',
+                'RESUME_TEX',
                 'RESUME_PDF',
                 'COVER_LETTER_DOCX',
+                'COVER_LETTER_TEX',
                 'COVER_LETTER_PDF',
                 'TRANSCRIPT',
                 'SCREENSHOT',
@@ -2581,7 +2589,7 @@ source resume template
 ## Template
 
 ```text
-source/NDanddank_resume.gdoc
+source/NDanddank_resume.tex
 ```
 
 ## Outputs
@@ -2590,7 +2598,7 @@ Example:
 
 ```text
 resumes/
-NDanddank_resume_NVIDIA_RoboticsSWE_09092026.gdoc
+NDanddank_resume_NVIDIA_RoboticsSWE_09092026.tex
 NDanddank_resume_NVIDIA_RoboticsSWE_09092026.pdf
 ```
 
@@ -2613,12 +2621,15 @@ Other resume content remains unchanged unless explicitly authorized.
 - maximize relevance without keyword stuffing;
 - choose strongest verified projects;
 - retain accurate project evidence.
+- escape untrusted plain text before inserting it into template-controlled LaTeX;
+- never modify the master template during application processing;
+- compile only through the centralized `LatexCompiler`.
 
 ## One-page loop
 
 ```text
-generate
-→ PDF
+generate marker-scoped `.tex`
+→ compile directly to PDF
 → count pages
 → pages == 1?
    yes → accept
@@ -2666,10 +2677,10 @@ Outputs:
 
 ```text
 cover-letters/
-NDanddank_CoverLetter_<Company>_<Role>_<Date>.gdoc
+NDanddank_CoverLetter_<Company>_<Role>_<Date>.tex
 ```
 
-and PDF when required.
+and a directly compiled PDF when a file is required. Plain text is retained for form fields.
 
 No invented facts.
 
@@ -4125,13 +4136,16 @@ Stop after Phase 6.
 
 ---
 
-# 90. Codex Phase 7 Prompt — Resume + Cover Letter
+# 90. Amended Phase 7 Contract — Resume + Cover Letter
+
+The original Phase 7 implementation history remains in `docs/phase-reports/phase7-report.md`.
+Architecture Amendment A1 replaces its cloud document choices with this current contract.
 
 ```text
 Implement Phase 7: Resume and Cover Letter.
 
 Resume template:
-resumes/NDanddank_resume.gdoc
+source/NDanddank_resume.tex
 
 Requirements:
 - copy template
@@ -4141,20 +4155,20 @@ Requirements:
 - project retrieval
 - Terra planning
 - Sol finalization where configured
-- save GDOC
-- convert PDF
+- save job-specific TEX
+- compile directly to PDF through LatexCompiler
 - deterministic PDF page count
 - compression loop until one page
 - artifact hashing
 - artifact DB records
 
 Naming:
-NDanddank_resume_<Company>_<Position>_<MMDDYYYY>.gdoc/pdf
+NDanddank_resume_<Company>_<Position>_<MMDDYYYY>.tex/pdf
 
 Implement cover-letter generation using verified facts.
 
 Naming:
-NDanddank_CoverLetter_<Company>_<Position>_<MMDDYYYY>.gdoc/pdf
+NDanddank_CoverLetter_<Company>_<Position>_<MMDDYYYY>.tex/pdf
 
 Important:
 No invented claims.
@@ -4169,7 +4183,7 @@ Acceptance:
 - PDF exists
 - exactly one page
 - hashes recorded
-- crash after GDOC can resume without duplicate artifact confusion
+- crash after TEX generation can resume without duplicate artifact confusion
 - no output outside project root
 
 Create FORM_PROCESS task only after successful resume artifact validation.

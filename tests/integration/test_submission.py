@@ -66,6 +66,7 @@ class Scenario:
     task_id: str
     approval_id: str
     resume_path: Path
+    resume_tex_path: Path
 
     def approval(self, status: str = "APPROVED", *, user: str = USER) -> None:
         with self.database.transaction() as session:
@@ -85,6 +86,7 @@ class Scenario:
 
 def setup_scenario(database: Database, tmp_path: Path) -> Scenario:
     resume = PathGuard().write_bytes(tmp_path / "resume.pdf", b"%PDF-1.4\nphase9")
+    resume_tex = PathGuard().write_text(tmp_path / "resume.tex", "\\documentclass{article}")
     with database.transaction() as session:
         job = JobRepository(session).create(
             JobCreate(
@@ -103,7 +105,17 @@ def setup_scenario(database: Database, tmp_path: Path) -> Scenario:
                 application_url=FAKE_ATS_ORIGIN + "/review",
             ),
         )
-        artifact = ArtifactRepository(session).create(
+        artifact_repository = ArtifactRepository(session)
+        artifact_repository.create(
+            ArtifactCreate(
+                "RESUME_TEX",
+                str(resume_tex),
+                hashlib.sha256(resume_tex.read_bytes()).hexdigest(),
+                "application/x-tex",
+                application_id=created.application_id,
+            )
+        )
+        artifact = artifact_repository.create(
             ArtifactCreate(
                 "RESUME_PDF",
                 str(resume),
@@ -159,6 +171,7 @@ def setup_scenario(database: Database, tmp_path: Path) -> Scenario:
         record.task_id,
         record.approval_id,
         resume,
+        resume_tex,
     )
 
 
@@ -186,6 +199,18 @@ def test_no_approval_is_blocked(database: Database, tmp_path: Path) -> None:
     run_worker(scenario, adapter)
     assert adapter.submit_calls == 0 and action(database) is None
     assert scenario.queue.get(scenario.task_id).task_status == "WAITING_HUMAN"
+
+
+def test_review_payload_binds_exact_tex_and_pdf_hashes(database: Database, tmp_path: Path) -> None:
+    scenario = setup_scenario(database, tmp_path)
+    with database.transaction() as session:
+        approval = session.get(Approval, scenario.approval_id)
+        assert approval
+        payload = read_review(approval.payload_path, approval.payload_sha256)
+    resume = payload["resume"]
+    assert isinstance(resume, dict)
+    assert resume["tex_sha256"] == hashlib.sha256(scenario.resume_tex_path.read_bytes()).hexdigest()
+    assert resume["pdf_sha256"] == hashlib.sha256(scenario.resume_path.read_bytes()).hexdigest()
 
 
 def test_dry_run_cannot_enter_submission_boundary(database: Database, tmp_path: Path) -> None:
@@ -264,6 +289,19 @@ def test_changed_resume_revokes_approval(database: Database, tmp_path: Path) -> 
     scenario.approval()
     scenario.resume()
     PathGuard().write_bytes(scenario.resume_path, b"changed")
+    adapter = FakeSubmissionAdapter()
+    run_worker(scenario, adapter)
+    with database.transaction() as session:
+        approval = session.get(Approval, scenario.approval_id)
+        assert approval and approval.approval_status == "REVOKED"
+    assert adapter.submit_calls == 0
+
+
+def test_changed_tex_after_approval_revokes_approval(database: Database, tmp_path: Path) -> None:
+    scenario = setup_scenario(database, tmp_path)
+    scenario.approval()
+    scenario.resume()
+    PathGuard().write_text(scenario.resume_tex_path, "changed source")
     adapter = FakeSubmissionAdapter()
     run_worker(scenario, adapter)
     with database.transaction() as session:

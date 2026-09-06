@@ -31,6 +31,11 @@ separates settled estimates from unresolved model reservations. `db integrity` c
 foreign keys, Alembic revision, WAL, and busy timeout. `doctor` adds artifacts, approvals,
 candidate provenance, browser state, architecture boundaries, and versioned eval datasets.
 
+Doctor also validates the authoritative LaTeX resume markers, the root-confined build directory,
+`pypdf`, and an installed `latexmk`, `pdflatex`, or `tectonic`. It reports a failure when no
+supported compiler exists and never installs one. Run the narrower check with
+`uv run --locked jhm resume check`.
+
 A warning is actionable but does not make the command fail. A failed doctor invariant exits with
 status 2. The `safe_to_enable_live` field remains false because local static checks cannot verify
 real credentials, account scopes, provider behavior, or a real end-to-end approved operation.

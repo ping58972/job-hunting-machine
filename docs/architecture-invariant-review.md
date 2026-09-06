@@ -12,7 +12,7 @@ versioned fault matrix, and the full network-free test suite.
 | INV-004 Structured state is memory | PASS | Durable workers reconstruct state from task memory, domain rows, action ledgers, evidence, and checkpoints. Process-death recovery tests confirm restart behavior. |
 | INV-005 Unique Task ID | PASS | Central prefixed ULID generation and database primary/unique constraints protect Task IDs. The queue requires persisted tasks before execution. |
 | INV-006 Unique Application ID | PASS | Central prefixed ULIDs and application primary keys protect Application IDs. Post-qualification tasks carry the exact application correlation. |
-| INV-007 No invented candidate facts | PASS | Candidate facts require provenance and explicit verification. Retrieval and resume planning read current VERIFIED facts only. `doctor` checks evidence presence. Human review remains responsible for truthfulness. |
+| INV-007 No invented candidate facts | PASS | Candidate facts require provenance and explicit verification. Retrieval and local LaTeX resume planning read current VERIFIED facts only. `doctor` checks evidence presence. Human review remains responsible for truthfulness. |
 | INV-008 Canonical form answers | PASS | The resolver accepts canonical verified information, verified candidate facts, approved derived values, or exact artifacts. Unknown and sensitive fields pause. |
 | INV-009 Submission approval | PASS | Only the dedicated Submission Agent can click final submit, after LIVE gates, an unexpired authorized approval, matching review hash/state, and idempotency checks. |
 | INV-010 Outreach approval | PASS | Only the Outreach Sender can send email, after LIVE gates and a current SEND_EMAIL approval. LinkedIn remains manual. |
@@ -35,8 +35,13 @@ approval-bound and idempotent submission/email; unknown-result reconciliation; m
 terminal monitor exclusion; meaningful Slack changes; DRY_RUN and explicit LIVE gates; fault
 coverage; backups; and recovery documentation.
 
+Architecture Amendment A1 additionally verifies marker-scoped template edits, LaTeX escaping,
+direct compiler invocation without a shell, one-page PDF enforcement, TEX/PDF artifact pairing,
+legacy DOCX read compatibility, and exact PDF approval binding. Google Docs is absent from the
+current application-document runtime.
+
 This does **not** make the machine safe to enable in LIVE mode today. The automated suite uses
-fake Slack, Gmail, browser/ATS, GitHub, Google Docs, and model transports. It does not validate the
+fake Slack, Gmail, browser/ATS, GitHub, local LaTeX compiler, and model transports. It does not validate the
 operator's current credentials and scopes, real ATS markup, account security challenges, provider
 rate limits, or a controlled real-world approval/action/reconciliation exercise. `jhm doctor`
 therefore reports `safe_to_enable_live: false`, even when all local architecture checks pass.

@@ -35,6 +35,10 @@ from the corresponding application detail. A transcript must be explicitly suppl
 application-scoped `TRANSCRIPT` artifact in the task payload. Every file is root-confined and its
 SHA-256 is checked again before use.
 
+Resume and cover-letter uploads accept only `RESUME_PDF` and `COVER_LETTER_PDF`. The Form Agent
+never chooses a newest filename and never uploads TEX, legacy DOCX, or GDOC data. Local LaTeX
+generation is complete before `FORM_PROCESS` exists.
+
 Playwright storage state is retrieved as a dictionary with IndexedDB, serialized canonically, and
 written through `PathGuard` beneath `data/browser-sessions/<application-id>/storage-state.json`.
 Files are private and ignored by Git. Recovery restores the dictionary, revisits the saved URL,

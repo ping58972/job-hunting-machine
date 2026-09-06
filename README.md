@@ -294,39 +294,31 @@ A deterministic failure stores evidence and becomes `ABORTED`. Unknown evidence 
 
 ### 4. Prepare the resume and optional cover letter
 
-The configured source is `source/NDanddank_resume.gdoc`. It must be a valid local Google Docs
-pointer for the intended template. The retained template content also needs an explicit verified
-template fact. The complete procedure is in [Resume and cover-letter artifacts](docs/resume-artifacts.md).
-
-The review sequence is:
+The authoritative master is `source/NDanddank_resume.tex`. The worker never modifies it. It copies
+the template into an application/task/version directory, changes only the marked `PROJECTS` and
+`SKILLS` regions, compiles directly to PDF, and registers `RESUME_TEX` plus `RESUME_PDF`. The
+ignored `resumes/NDanddank_resume.tex` copy is a legacy reference only. Validate the local setup:
 
 ```bash
-export GOOGLE_DOCS_ALLOW_LIVE=1
-export GOOGLE_ACCESS_TOKEN='short-lived-token-from-secure-storage'
-uv run --locked jhm resume template-propose --live-docs --folder-id PRIVATE_FOLDER_ID
-uv run --locked jhm catalog facts
-uv run --locked jhm catalog decide TEMPLATE_FACT_ID VERIFIED \
-  --value-sha256 VALUE_SHA256 \
-  --reviewer YOUR_LOCAL_REVIEWER_NAME
+uv run --locked jhm resume check
 ```
 
-After review, set `template_fact_id` in `config/resume.yaml`. Resume generation also uses
-ModelGateway and therefore requires both explicit live flags:
+The command checks both local templates and selects an installed `latexmk`, `pdflatex`, or
+`tectonic` compiler. It does not install software or contact a cloud service. Resume selection
+uses ModelGateway, so a real worker invocation separately requires the model opt-in:
 
 ```bash
 export OPENAI_ALLOW_LIVE=1
 export OPENAI_API_KEY='key-from-secure-storage'
-uv run --locked jhm resume worker \
-  --live-docs \
-  --live-models \
-  --folder-id PRIVATE_FOLDER_ID \
-  --once
+uv run --locked jhm resume worker --live-models --once
 ```
 
-The worker copies the native template, changes only `PROJECTS` and `SKILLS`, uses verified facts,
-exports a PDF, compresses content until it is exactly one page, records hashes, and creates
-`FORM_PROCESS` only after artifact validation. Enable cover letters with the reviewed policy in
-`config/resume.yaml`.
+The generated `.tex` and `.pdf` remain under the project root. The worker escapes inserted plain
+text, uses current VERIFIED facts, compresses lower-ranked content until the PDF is exactly one
+page, records hashes and versions, and creates `FORM_PROCESS` only after artifact validation.
+Enable cover letters with `cover_letter: true` in `config/resume.yaml`; they use the local
+`source/NDanddank_cover_letter.tex` template and also retain plain text for form questions. Full
+details are in [Local LaTeX document artifacts](docs/resume-artifacts.md).
 
 ### 5. Prepare the application form
 
@@ -525,9 +517,9 @@ git diff --check
 uv lock --check
 ```
 
-The Phase 12 baseline is 402 passing tests, four evaluation datasets with 13 passing cases, Ruff
-and strict mypy success, and no live external calls. Test fixtures use fake Slack, Gmail, GitHub,
-Google Docs, model, and ATS adapters. The fault matrix covers process death, stale leases, SQLite
+The Phase 12 baseline was 402 passing tests, four evaluation datasets with 13 passing cases, Ruff
+and strict mypy success, and no live external calls. Current test fixtures use local LaTeX, fake
+Slack, Gmail, GitHub, model, and ATS adapters. The fault matrix covers process death, stale leases, SQLite
 locking, model errors, duplicate deliveries and approvals, provider failures, browser failures,
 missing/corrupted artifacts, submission ambiguity, duplicate jobs, deleted postings, and status
 conflicts.
@@ -535,8 +527,13 @@ conflicts.
 ## Architecture and detailed guides
 
 - [Architecture v2](docs/architecture-v2.md): authoritative design and invariants.
+- [Architecture Amendment A1](docs/architecture-amendments/A1-latex-document-pipeline.md): local
+  LaTeX document pipeline that supersedes GDOC/DOCX application documents.
 - [Architecture invariant review](docs/architecture-invariant-review.md): INV-001 through INV-018.
 - [Local operations](docs/local-operations.md): startup, backup, recovery, launchd, and incidents.
+- [Document operations](docs/operations.md): local LaTeX environment and worker commands.
+- [Safety boundaries](docs/safety.md): document, form, approval, and external-effect gates.
+- [State machines](docs/state-machines.md): durable LaTeX generation checkpoints.
 - [Database](docs/database.md): schema, repositories, transactions, and policy seeds.
 - [Durable orchestration](docs/orchestration.md): leases, checkpoints, retries, and interrupts.
 - [ModelGateway](docs/model-gateway.md): model registry, budgets, prompts, and mock/live boundaries.

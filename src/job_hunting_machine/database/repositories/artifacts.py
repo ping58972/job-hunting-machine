@@ -12,9 +12,9 @@ from job_hunting_machine.security.paths import PROJECT_ROOT, PathGuard
 _SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
 _ARTIFACT_TYPES = frozenset(
     {
-        "RESUME_DOCX",
+        "RESUME_TEX",
         "RESUME_PDF",
-        "COVER_LETTER_DOCX",
+        "COVER_LETTER_TEX",
         "COVER_LETTER_PDF",
         "TRANSCRIPT",
         "SCREENSHOT",

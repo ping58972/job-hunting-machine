@@ -86,8 +86,8 @@ def test_resume_worker_default_does_not_connect() -> None:
     result = runner.invoke(app, ["resume", "worker", "--once"])
     assert result.exit_code == 0
     assert json.loads(result.stdout) == {
-        "phase": 7,
-        "live_docs": False,
+        "documents": "local_latex",
+        "external_effects": False,
+        "google_docs": False,
         "live_models": False,
-        "form_processing": False,
     }

@@ -19,6 +19,7 @@ The Submission Agent rechecks all of these conditions before its first click:
 - the application is `READY_TO_REVIEW`;
 - the stored review bytes remain canonical and match their SHA-256;
 - regenerating the review from current answers and artifact bytes produces identical canonical JSON;
+- resume and cover-letter entries bind paired TEX metadata and the exact submission PDF SHA-256;
 - no active submission action or conflicting idempotency key exists.
 
 The stable action key is `submit:<application-id>:<review-hash>`. Immediately before calling the
