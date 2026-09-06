@@ -21,7 +21,7 @@ def test_cli_version() -> None:
 def test_cli_help() -> None:
     result = runner.invoke(app, ["--help"])
     assert result.exit_code == 0
-    assert "Phase 7" in result.stdout
+    assert "Phase 8" in result.stdout
 
 
 def test_cli_default_configuration(tmp_path: Path) -> None:
@@ -31,7 +31,8 @@ def test_cli_default_configuration(tmp_path: Path) -> None:
     assert config["configured_runtime_mode"] == "DRY_RUN"
     assert config["workflow_available"] is True
     assert config["external_workflows_available"] is False
-    assert config["phase"] == 7
+    assert config["phase"] == 8
+    assert config["form_preparation_available"] is True
     assert config["resume_artifacts_available"] is True
     assert config["model_gateway_available"] is True
     log = json.loads(result.stderr)

@@ -13,6 +13,14 @@ from job_hunting_machine.database.repositories.base import (
     RecordNotFoundError,
     ReplayConflictError,
 )
+from job_hunting_machine.database.repositories.forms import (
+    AnswerUpsert,
+    BrowserSessionRepository,
+    FormAnswerRepository,
+    FormInformationRepository,
+    InformationUpsert,
+    SessionCheckpoint,
+)
 from job_hunting_machine.database.repositories.jobs import JobCreate, JobRepository
 from job_hunting_machine.database.repositories.knowledge import (
     CandidateFactRepository,
@@ -23,6 +31,7 @@ from job_hunting_machine.database.repositories.tasks import TaskCreate, TaskRepo
 __all__ = [
     "ActivityEvent",
     "ActivityLogRepository",
+    "AnswerUpsert",
     "ApplicationCreate",
     "ApplicationCreation",
     "ApplicationRepository",
@@ -30,13 +39,18 @@ __all__ = [
     "ApprovalRepository",
     "ArtifactCreate",
     "ArtifactRepository",
+    "BrowserSessionRepository",
     "CandidateFactRepository",
     "CatalogRepository",
     "ConcurrentUpdateError",
+    "FormAnswerRepository",
+    "FormInformationRepository",
+    "InformationUpsert",
     "JobCreate",
     "JobRepository",
     "RecordNotFoundError",
     "ReplayConflictError",
+    "SessionCheckpoint",
     "TaskCreate",
     "TaskRepository",
 ]

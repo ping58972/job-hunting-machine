@@ -323,10 +323,80 @@ def test_missing_info_reply_durable_and_not_echoed(control: SlackControlPlane) -
     control.receive(body)
     control.process_one()
     assert control.queue.get(task_id).task_status == "READY"
-    assert control.queue.memory(task_id)["resume"] == {
-        "interrupt_id": "interrupt_fixture",
-        "value": "Synthetic availability",
+    resume = control.queue.memory(task_id)["resume"]
+    assert isinstance(resume, dict)
+    value = resume["value"]
+    assert isinstance(value, dict)
+    assert resume["interrupt_id"] == "interrupt_fixture"
+    assert value == {
+        "answer": "Synthetic availability",
+        "user_id": "UALLOWED",
+        "event_id": value["event_id"],
     }
+    assert str(value["event_id"]).startswith("interaction_")
+
+
+def test_prepare_approval_callback_resumes_only_the_exact_task(
+    control: SlackControlPlane, tmp_path: Path
+) -> None:
+    payload = PathGuard().write_text(tmp_path / "prepare.json", '{"operation":"prepare"}')
+    with control.database.transaction() as session:
+        job = JobRepository(session, CLOCK).create(
+            JobCreate(
+                "https://example.invalid/prepare",
+                "https://example.invalid/prepare",
+                "TEST",
+                qualification_status="PASSED",
+            )
+        )
+        application = ApplicationRepository(session, CLOCK).create_from_passed_job(
+            job.job_id,
+            ApplicationCreate("Synthetic", "Role", job.canonical_url),
+        )
+        task = TaskRepository(session, CLOCK).create(
+            TaskCreate(
+                "FORM_PROCESS",
+                task_status="READY",
+                application_id=application.application_id,
+            )
+        )
+        approval = ApprovalRepository(session, CLOCK).create(
+            ApprovalCreate(
+                "PREPARE_APPLICATION",
+                str(payload),
+                hashlib.sha256(payload.read_bytes()).hexdigest(),
+                application_id=application.application_id,
+                task_id=task.task_id,
+            )
+        )
+        task_id, approval_id = task.task_id, approval.approval_id
+    lease = control.queue.claim(["FORM_PROCESS"])
+    assert lease and lease.task_id == task_id
+    control.queue.complete(
+        lease,
+        {
+            "interrupts": {
+                "prepare_fixture": {
+                    "kind": "PREPARE_APPROVAL",
+                    "approval_id": approval_id,
+                }
+            }
+        },
+        waiting=True,
+    )
+    action_id = control.request_approval(approval_id)
+    control.actions.deliver_one()
+    control.receive(interaction(control, action_id))
+    control.process_one()
+    assert status(control, approval_id) == "APPROVED"
+    assert control.queue.get(task_id).task_status == "READY"
+    memory = control.queue.memory(task_id)
+    resume = memory["resume"]
+    assert isinstance(resume, dict)
+    assert resume["interrupt_id"] == "prepare_fixture"
+    with control.database.transaction() as session:
+        types = set(session.scalars(select(ExternalAction.action_type)))
+        assert types == {"SLACK_NOTIFICATION"}
     assert isinstance(control.actions.adapter, FakeSlackAdapter)
     assert "Synthetic availability" not in json.dumps(control.actions.adapter.messages)
 

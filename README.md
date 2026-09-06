@@ -1,17 +1,34 @@
 # Job Hunting Machine
 
-Phase 7 extends the local Python foundation for [Architecture v2](docs/architecture-v2.md).
+Phase 8 extends the local Python foundation for [Architecture v2](docs/architecture-v2.md).
 It provides safe file writes, validated configuration, UTC clocks, ULID identifiers,
 structured logging, an Alembic-managed SQLite database, audited repositories, and a local
 administration CLI. Durable workers now run deterministic fixtures with leases,
 LangGraph checkpoints, recovery, and human pause/resume. Workers retrieve links, qualify jobs,
-maintain verified candidate knowledge, and prepare native Google Docs resumes and cover letters.
-Form processing and submission are not implemented. ModelGateway provides budgeted, structured OpenAI Responses
+maintain verified candidate knowledge, prepare native Google Docs resumes and cover letters, and
+prepare approved ATS forms through `READY_TO_REVIEW`. Final submission is not implemented.
+ModelGateway provides budgeted, structured OpenAI Responses
 infrastructure with mock transport by default. Qualification uses deterministic policy first and optional budgeted semantic checks. Slack control now supports durable intake, questions,
 notifications, and approval decisions, with fake transport by default.
 
-Phase 7 documentation: [Resume and cover-letter workflow](docs/resume-artifacts.md) and
-[acceptance report](docs/phase-reports/phase7-report.md). The default resume command is offline:
+Phase 8 documentation: [browser and form preparation](docs/form-preparation.md) and
+[acceptance report](docs/phase-reports/phase8-report.md). The default form command is offline:
+
+```bash
+uv run --locked jhm form worker
+```
+
+It reports capability and performs no browser mutation. The network-free fake ATS path is explicit:
+
+```bash
+uv run --locked jhm form worker --staging --once --database .tmp/form-demo.db
+```
+
+The database must contain an eligible `FORM_PROCESS` task and validated application-specific resume.
+Real-site preparation requires configured `LIVE`, `--live`, and `FORM_BROWSER_ALLOW_LIVE=1`.
+There is no final-submit method, selector, command, task, or browser action in Phase 8.
+
+Phase 7 resume generation remains available. The default resume command is offline:
 
 ```bash
 uv run --locked jhm resume worker --once
@@ -60,8 +77,8 @@ and Git. No credentials are needed for mock mode or normal tests.
 Runtime modes are exactly `DRY_RUN`, `STAGING`, and `LIVE`. Log levels are `DEBUG`,
 `INFO`, `WARNING`, `ERROR`, and `CRITICAL`. Reading a configured mode does not start
 a runtime. The explicit `jhm worker` command runs only synthetic workflows in DRY_RUN,
-even if configuration says LIVE. Slack connectivity requires separate explicit opt-in. A future submission runner must require both configured LIVE
-and explicit CLI authorization, with separate approval for irreversible actions.
+even if configuration says LIVE. Slack connectivity requires separate explicit opt-in. Phase 8
+real-site preparation requires its three explicit gates. Final submission belongs to a later phase.
 
 ```bash
 uv run --locked jhm --help
@@ -85,6 +102,7 @@ The package uses a `src` layout under `src/job_hunting_machine`:
 | `orchestration/` | Audited queue service, lease-fenced checkpoints, worker recovery, and fixture graphs |
 | `slack/` | Durable Slack inbox, safe outbox, approval decisions, and opt-in Socket Mode |
 | `models/` | ModelGateway, registry, budgets, pricing, prompts, and Responses/mock transports |
+| `browser/` | Playwright, ATS adapters, canonical fields, approvals, actions, and Form Agent |
 
 SQLAlchemy and Alembic implement the 23 Architecture v2 domain tables. The separate
 Alembic version table tracks schema revision `0001_architecture_v2`.
@@ -249,7 +267,7 @@ and persistence across restarts. Queue acceptance tests also terminate a subproc
 mid-workflow, resume saved nodes, fence stale writers, and preserve human interrupts.
 No test uses an external service.
 
-See [the Phase 6 implementation report](docs/phase-reports/phase6-report.md) for
+See [the Phase 8 implementation report](docs/phase-reports/phase8-report.md) for
 the executed commands, acceptance results, and limitations. Existing candidate
 documents remain untouched and ignored by Git. The [Phase 0 report](docs/phase-reports/phase0-report.md)
 and [Phase 1 report](docs/phase-reports/phase1-report.md) are preserved as historical
@@ -257,7 +275,7 @@ evidence, together with the [Phase 2 report](docs/phase-reports/phase2-report.md
 The [Phase 3 report](docs/phase-reports/phase3-report.md) is also preserved.
 The [Phase 4 report](docs/phase-reports/phase4-report.md) is preserved.
 The [Phase 5 report](docs/phase-reports/phase5-report.md) is preserved.
-Phase 7 has not started.
+The prior phase reports remain historical evidence. Phase 9 has not started.
 
 ## Slack control plane
 

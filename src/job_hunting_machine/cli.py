@@ -10,6 +10,7 @@ from alembic.util.exc import CommandError
 from sqlalchemy.exc import SQLAlchemyError
 
 from job_hunting_machine import __version__
+from job_hunting_machine.browser.cli import app as form_app
 from job_hunting_machine.config import ConfigurationError, load_settings
 from job_hunting_machine.database.engine import DATABASE_PATH, Database, DatabaseError
 from job_hunting_machine.knowledge.cli import app as catalog_app
@@ -19,7 +20,7 @@ from job_hunting_machine.security.paths import PROJECT_ROOT
 
 app = typer.Typer(
     name="jhm",
-    help="Job Hunting Machine: Phase 7 resume artifacts. Live access requires opt-in.",
+    help="Job Hunting Machine: Phase 8 form preparation. Final submission is unavailable.",
     no_args_is_help=True,
     add_completion=False,
     pretty_exceptions_enable=False,
@@ -28,6 +29,7 @@ database_app = typer.Typer(help="Local Alembic migration and policy seed adminis
 app.add_typer(database_app, name="db")
 app.add_typer(catalog_app, name="catalog")
 app.add_typer(resume_app, name="resume")
+app.add_typer(form_app, name="form")
 
 
 @app.command()
@@ -64,7 +66,8 @@ def show_config(
                 "project_root": str(settings.project_root),
                 "configured_runtime_mode": settings.runtime_mode.value,
                 "log_level": settings.log_level,
-                "phase": 7,
+                "phase": 8,
+                "form_preparation_available": True,
                 "resume_artifacts_available": True,
                 "candidate_knowledge_available": True,
                 "qualification_available": True,

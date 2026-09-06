@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from job_hunting_machine.clock import Clock, SystemClock, format_utc
 from job_hunting_machine.database.engine import Database
-from job_hunting_machine.database.models import Approval, ExternalAction, SlackEvent
+from job_hunting_machine.database.models import Approval, ExternalAction, SlackEvent, TaskMemory
 from job_hunting_machine.database.repositories import TaskCreate, TaskRepository
 from job_hunting_machine.database.repositories.activity import ActivityEvent, ActivityLogRepository
 from job_hunting_machine.database.repositories.base import ConcurrentUpdateError
@@ -157,7 +157,10 @@ class SlackControlPlane:
             if message.kind != "question" or not message.interrupt_id:
                 raise SlackInputError("interaction_kind_mismatch")
             self.queue.resume_in_transaction(
-                session, message.task_id, message.interrupt_id, value["answer"]
+                session,
+                message.task_id,
+                message.interrupt_id,
+                {"answer": value["answer"], "user_id": value["user"], "event_id": event_id},
             )
             return
         if message.kind != "approval":
@@ -178,6 +181,30 @@ class SlackControlPlane:
             decision="APPROVED" if value["kind"] == "jhm_approve" else "REJECTED",
             user_id=value["user"],
         )
+        memory_row = session.get(TaskMemory, message.task_id)
+        memory = json.loads(memory_row.state_json) if memory_row else {}
+        interrupts = memory.get("interrupts", {})
+        if isinstance(interrupts, dict):
+            match = next(
+                (
+                    interrupt_id
+                    for interrupt_id, item in interrupts.items()
+                    if isinstance(item, dict) and item.get("approval_id") == approval.approval_id
+                ),
+                None,
+            )
+            if match:
+                self.queue.resume_in_transaction(
+                    session,
+                    message.task_id,
+                    match,
+                    {
+                        "approval_id": approval.approval_id,
+                        "decision": approval.approval_status,
+                        "user_id": value["user"],
+                        "event_id": event_id,
+                    },
+                )
 
     def notify(self, task_id: str, notice: Notice) -> str:
         task = self.queue.get(task_id)

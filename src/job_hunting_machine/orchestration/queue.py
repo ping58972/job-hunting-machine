@@ -229,14 +229,31 @@ class QueueService:
         self, lease: Lease, memory: Mapping[str, object], *, waiting: bool = False
     ) -> None:
         with self.fence(lease) as session:
-            row = self._get(session, lease.task_id)
-            self._memory(session, row, memory)
-            self._finish(
-                session,
-                row,
-                "WAITING_HUMAN" if waiting else "SUCCEEDED",
-                "task_waiting_human" if waiting else "task_succeeded",
-            )
+            self.complete_in_transaction(session, lease, memory, waiting=waiting)
+
+    def complete_in_transaction(
+        self,
+        session: Session,
+        lease: Lease,
+        memory: Mapping[str, object],
+        *,
+        waiting: bool = False,
+    ) -> None:
+        """Finish an owned task inside its caller's already-fenced transaction."""
+        row = self._get(session, lease.task_id)
+        if (
+            row.task_status != "ACTIVE"
+            or row.worker_id != lease.worker_id
+            or row.attempt_count != lease.attempt
+        ):
+            raise LeaseLostError("Task lease ownership changed")
+        self._memory(session, row, memory)
+        self._finish(
+            session,
+            row,
+            "WAITING_HUMAN" if waiting else "SUCCEEDED",
+            "task_waiting_human" if waiting else "task_succeeded",
+        )
 
     def fail(self, lease: Lease, *, retryable: bool) -> None:
         with self.fence(lease) as session:

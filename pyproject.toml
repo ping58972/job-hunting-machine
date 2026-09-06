@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "job-hunting-machine"
 version = "0.1.0"
-description = "Evidence-bound native resume and cover-letter artifacts (Architecture v2, Phase 7)"
+description = "Approval-bound browser form preparation (Architecture v2, Phase 8)"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

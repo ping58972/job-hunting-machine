@@ -1,0 +1,5 @@
+version: 1
+supported_mutation_ats: [GREENHOUSE, LEVER, ASHBY, GENERIC]
+inspect_only_ats: [WORKDAY, SMARTRECRUITERS, ICIMS]
+max_pages: 10
+approval_ttl_seconds: 86400
