@@ -23,7 +23,7 @@ from job_hunting_machine.submission.cli import app as submission_app
 
 app = typer.Typer(
     name="jhm",
-    help="Job Hunting Machine: Phase 11 application monitoring.",
+    help="Job Hunting Machine: Phase 12 local production readiness.",
     no_args_is_help=True,
     add_completion=False,
     pretty_exceptions_enable=False,
@@ -72,7 +72,8 @@ def show_config(
                 "project_root": str(settings.project_root),
                 "configured_runtime_mode": settings.runtime_mode.value,
                 "log_level": settings.log_level,
-                "phase": 11,
+                "phase": 12,
+                "reliability_operations_available": True,
                 "application_monitor_available": True,
                 "outreach_available": True,
                 "submission_available": True,
@@ -119,8 +120,28 @@ def initialize_database(
             database.dispose()
 
 
-queue_app = typer.Typer(help="Local durable queue and deterministic fixtures only.")
+queue_app = typer.Typer(
+    help="Report the durable queue or run deterministic fixtures.",
+    invoke_without_command=True,
+)
 app.add_typer(queue_app, name="queue")
+
+
+@queue_app.callback()
+def queue_report(
+    context: typer.Context,
+    database_path: Annotated[Path, typer.Option("--database")] = DATABASE_PATH,
+) -> None:
+    """Show queue counts and stale/due work when no queue subcommand is supplied."""
+    if context.invoked_subcommand is not None:
+        return
+    from job_hunting_machine.reliability.reports import OperationalReports
+
+    database = Database(database_path)
+    try:
+        typer.echo(json.dumps(OperationalReports(database).queue(), indent=2))
+    finally:
+        database.dispose()
 
 
 @queue_app.command("demo")
@@ -273,6 +294,120 @@ def slack_control(
     finally:
         if database is not None:
             database.dispose()
+
+
+@app.command("status")
+def operational_status(
+    database_path: Annotated[Path, typer.Option("--database")] = DATABASE_PATH,
+) -> None:
+    """Read local health and workload counts without recovery or external calls."""
+    from job_hunting_machine.reliability.reports import OperationalReports
+
+    database = Database(database_path)
+    try:
+        mode = load_settings().runtime_mode.value
+        typer.echo(json.dumps(OperationalReports(database).status(mode), indent=2))
+    finally:
+        database.dispose()
+
+
+@app.command("applications")
+def application_report(
+    limit: Annotated[int, typer.Option(min=1, max=1000)] = 100,
+    database_path: Annotated[Path, typer.Option("--database")] = DATABASE_PATH,
+) -> None:
+    """Show a bounded local application status report."""
+    from job_hunting_machine.reliability.reports import OperationalReports
+
+    database = Database(database_path)
+    try:
+        typer.echo(json.dumps(OperationalReports(database).applications(limit=limit), indent=2))
+    finally:
+        database.dispose()
+
+
+@app.command("costs")
+def cost_report(
+    database_path: Annotated[Path, typer.Option("--database")] = DATABASE_PATH,
+) -> None:
+    """Aggregate settled model cost and unresolved conservative reservations."""
+    from job_hunting_machine.reliability.reports import OperationalReports
+
+    database = Database(database_path)
+    try:
+        typer.echo(json.dumps(OperationalReports(database).costs(), indent=2))
+    finally:
+        database.dispose()
+
+
+@app.command("recover")
+def recover_local(
+    database_path: Annotated[Path, typer.Option("--database")] = DATABASE_PATH,
+) -> None:
+    """Recover stale queue ownership and mark abandoned external effects unknown."""
+    from job_hunting_machine.reliability.recovery import RecoveryError, RecoveryService
+    from job_hunting_machine.slack.config import load_slack_settings
+
+    database = Database(database_path)
+    try:
+        try:
+            result = RecoveryService(database, slack_settings=load_slack_settings()).recover()
+        except RecoveryError:
+            typer.echo("Recovery stopped: database compatibility check failed.", err=True)
+            raise typer.Exit(code=2) from None
+        typer.echo(json.dumps({**asdict(result), "total": result.total}, indent=2))
+    finally:
+        database.dispose()
+
+
+@app.command("backup")
+def backup_local(
+    database_path: Annotated[Path, typer.Option("--database")] = DATABASE_PATH,
+    checkpoint_path: Annotated[
+        Path | None, typer.Option("--checkpoint", help="Optional LangGraph checkpoint database.")
+    ] = None,
+) -> None:
+    """Create an online SQLite-safe, root-local backup and SHA-256 manifest."""
+    from job_hunting_machine.reliability.backup import BackupService
+
+    checkpoint = checkpoint_path or database_path.parent / "langgraph-checkpoints.db"
+    result = BackupService().create(database_path, checkpoint)
+    typer.echo(json.dumps(asdict(result), indent=2))
+
+
+@app.command("doctor")
+def doctor(
+    database_path: Annotated[Path, typer.Option("--database")] = DATABASE_PATH,
+    checkpoint_path: Annotated[Path | None, typer.Option("--checkpoint")] = None,
+) -> None:
+    """Check schema, data, artifacts, evals, and architecture safety invariants."""
+    from job_hunting_machine.reliability.doctor import Doctor
+
+    database = Database(database_path)
+    try:
+        result = Doctor(database, checkpoint_path=checkpoint_path).run(load_settings().runtime_mode)
+        typer.echo(json.dumps(result, indent=2))
+        if result["failures"]:
+            raise typer.Exit(code=2)
+    finally:
+        database.dispose()
+
+
+@database_app.command("integrity")
+def database_integrity(
+    database_path: Annotated[Path, typer.Option("--database")] = DATABASE_PATH,
+) -> None:
+    """Run SQLite integrity, foreign-key, migration, WAL, and timeout checks."""
+    from job_hunting_machine.reliability.doctor import Doctor
+
+    database = Database(database_path)
+    try:
+        result = Doctor(database).database_integrity()
+        typer.echo(json.dumps(result, indent=2))
+        if not result["ok"]:
+            raise typer.Exit(code=2)
+    finally:
+        database.dispose()
 
 
 @app.command("qualify")

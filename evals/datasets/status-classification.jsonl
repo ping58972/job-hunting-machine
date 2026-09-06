@@ -1,0 +1,4 @@
+{"version":1,"suite":"status_classification","case_id":"status-rejected","input":{"subject":"Application update","body":"We regret to inform you that we are not moving forward."},"expected":{"detected_status":"REJECTED"},"tags":["terminal"]}
+{"version":1,"suite":"status_classification","case_id":"status-interview","input":{"subject":"Interview invitation","body":"We invite you to interview next week."},"expected":{"detected_status":"INTERVIEW"},"tags":["meaningful"]}
+{"version":1,"suite":"status_classification","case_id":"status-assessment","input":{"subject":"Next step","body":"Please complete the technical assessment."},"expected":{"detected_status":"ASSESSMENT"},"tags":["meaningful"]}
+{"version":1,"suite":"status_classification","case_id":"status-unchanged-unknown","input":{"subject":"Newsletter","body":"Read our latest company news."},"expected":{"detected_status":null},"tags":["ignore"]}

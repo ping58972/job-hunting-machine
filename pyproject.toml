@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "job-hunting-machine"
 version = "0.1.0"
-description = "Approval-bound job workflow with application monitoring (Architecture v2, Phase 11)"
+description = "Reliable approval-bound job workflow (Architecture v2, Phase 12)"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -49,7 +49,7 @@ packages = ["src/job_hunting_machine"]
 
 [tool.hatch.build.targets.sdist]
 include = [
-    "/src", "/tests", "/config", "/docs", "/AGENTS.md", "/README.md",
+    "/src", "/tests", "/config", "/evals", "/docs", "/AGENTS.md", "/README.md",
     "/pyproject.toml", "/uv.lock", "/alembic.ini", "/.gitignore", "/.env.example", "/.python-version",
 ]
 

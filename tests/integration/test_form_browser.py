@@ -435,3 +435,79 @@ def test_corrupt_resume_fails_before_business_state_change(
         pipeline = session.get(ApplicationPipeline, application_id)
         assert pipeline and pipeline.application_status == "FORM_READY"
         assert session.scalar(select(func.count()).select_from(BrowserSession)) == 0
+
+
+def test_expired_browser_login_pauses_before_browser_access(
+    database: Database, tmp_path: Path
+) -> None:
+    from job_hunting_machine.database.repositories import (
+        BrowserSessionRepository,
+        SessionCheckpoint,
+    )
+
+    queue, application_id, task_id = setup_form(database, tmp_path)
+    state = PathGuard().write_text(tmp_path / "expired-storage.json", '{"cookies":[],"origins":[]}')
+    with database.transaction() as session:
+        row = BrowserSessionRepository(session).checkpoint(
+            SessionCheckpoint(
+                application_id,
+                "GREENHOUSE",
+                str(state),
+                FAKE_ATS_ORIGIN + "/apply",
+                "contact",
+                "EXPIRED",
+            )
+        )
+        row.expires_at = "2000-01-01T00:00:00.000Z"
+    fake = FakeATSApplication()
+    manager = BrowserManager(BrowserSettings(runtime_mode=RuntimeMode.STAGING), fake=fake)
+    worker = FormWorker(queue, manager)
+    asyncio.run(worker.run_once())
+    assert queue.get(task_id).task_status == "WAITING_HUMAN"
+    assert fake.requests == []
+    memory = queue.memory(task_id)
+    interrupts = memory["interrupts"]
+    assert isinstance(interrupts, dict)
+    assert any(
+        isinstance(item, dict) and item.get("kind") == "EXPIRED_BROWSER_LOGIN"
+        for item in interrupts.values()
+    )
+
+
+def test_missing_transcript_pauses_before_any_upload(database: Database, tmp_path: Path) -> None:
+    queue, _, task_id = setup_form(database, tmp_path)
+    fake = FakeATSApplication(transcript=True)
+    manager = BrowserManager(BrowserSettings(runtime_mode=RuntimeMode.STAGING), fake=fake)
+    worker = FormWorker(queue, manager)
+
+    async def run() -> None:
+        assert await worker.run_once()
+        await worker.close()
+
+    asyncio.run(run())
+    assert queue.get(task_id).task_status == "WAITING_HUMAN"
+    with database.transaction() as session:
+        transcript = session.scalar(select(FormAnswer).where(FormAnswer.field_key == "transcript"))
+        assert transcript and transcript.answer_status == "NEEDS_USER"
+        assert session.scalar(select(func.count()).select_from(ExternalAction)) == 0
+
+
+def test_browser_process_crash_can_restart_cleanly(tmp_path: Path) -> None:
+    manager = BrowserManager(
+        BrowserSettings(runtime_mode=RuntimeMode.STAGING),
+        fake=FakeATSApplication(),
+        root=tmp_path / "sessions",
+    )
+
+    async def run() -> None:
+        await manager.start()
+        first = manager._browser
+        assert first and first.is_connected()
+        await first.close()
+        assert not first.is_connected()
+        await manager.start()
+        assert manager._browser and manager._browser is not first
+        assert manager._browser.is_connected()
+        await manager.close()
+
+    asyncio.run(run())

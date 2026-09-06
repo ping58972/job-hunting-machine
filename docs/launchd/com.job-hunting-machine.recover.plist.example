@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.job-hunting-machine.recover</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>-lc</string>
+    <string>cd /Users/ping58972/Documents/job-hunting-machine &amp;&amp; mkdir -p .tmp logs &amp;&amp; TMPDIR="$PWD/.tmp" exec /opt/homebrew/bin/uv run --locked jhm recover</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>StandardOutPath</key>
+  <string>/Users/ping58972/Documents/job-hunting-machine/logs/launchd-recover.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/ping58972/Documents/job-hunting-machine/logs/launchd-recover.err.log</string>
+</dict>
+</plist>

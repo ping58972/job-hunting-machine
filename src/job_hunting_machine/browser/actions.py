@@ -222,4 +222,14 @@ class ExternalActionService:
             for row in rows:
                 row.action_status = "UNKNOWN_RESULT"
                 row.updated_at = now
+                ActivityLogRepository(session, self.queue.clock, self.queue.ids).append(
+                    ActivityEvent(
+                        "browser_action_recovered_unknown",
+                        task_id=row.task_id,
+                        application_id=row.application_id,
+                        old_state="EXECUTING",
+                        new_state="UNKNOWN_RESULT",
+                        metadata={"external_action_id": row.external_action_id},
+                    )
+                )
             return len(rows)

@@ -6,7 +6,7 @@ import json
 import os
 import stat
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass
 from pathlib import Path
 from typing import ClassVar, cast
@@ -61,6 +61,16 @@ class BrowserManager:
     async def start(self) -> None:
         if self._browser and self._browser.is_connected():
             return
+        # A terminated Chromium process leaves its Playwright driver behind. Dispose that
+        # driver before starting a clean process; persisted storage state is restored later.
+        if self._browser:
+            with suppress(Exception):
+                await self._browser.close()
+            self._browser = None
+        if self._playwright:
+            with suppress(Exception):
+                await self._playwright.stop()
+            self._playwright = None
         temporary = self.guard.mkdir(".tmp/form-browser", parents=True, exist_ok=True)
         self._playwright = await async_playwright().start()
         self._browser = await self._playwright.chromium.launch(

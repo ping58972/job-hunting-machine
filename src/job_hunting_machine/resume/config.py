@@ -19,8 +19,10 @@ class ResumePolicy(BaseModel):
 
     def validate_paths(self) -> None:
         guard = PathGuard()
-        guard.validate_write(self.template)
+        template = guard.validate_write(self.template)
         guard.validate_write(self.output_root)
+        if not template.is_file():
+            raise ValueError("source_resume_template_missing")
 
 
 def load_policy(path: Path = PROJECT_ROOT / "config/resume.yaml") -> ResumePolicy:

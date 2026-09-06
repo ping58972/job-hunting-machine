@@ -1,0 +1,23 @@
+version: 1
+scenarios:
+  - {name: laptop_process_termination, test: tests/integration/test_orchestration.py::test_actual_process_death_recovers_saved_node}
+  - {name: stale_worker_lease, test: tests/integration/test_orchestration.py::test_expired_worker_is_fenced_and_new_owner_recovers}
+  - {name: sqlite_busy_locked, test: tests/integration/test_orchestration.py::test_database_busy_classification}
+  - {name: openai_timeout, test: tests/integration/test_model_gateway.py::test_transport_retry_recording_and_no_tier_escalation}
+  - {name: openai_malformed_structured_output, test: tests/integration/test_model_gateway.py::test_invalid_schema_twice_escalates_luna_to_terra}
+  - {name: slack_duplicate_delivery, test: tests/integration/test_slack_control.py::test_concurrent_duplicate_deliveries_create_one_inbox_task}
+  - {name: slack_unavailable, test: tests/integration/test_slack_control.py::test_unknown_delivery_is_not_automatically_resent}
+  - {name: browser_crash, test: tests/integration/test_form_browser.py::test_browser_process_crash_can_restart_cleanly}
+  - {name: expired_browser_login, test: tests/integration/test_form_browser.py::test_expired_browser_login_pauses_before_browser_access}
+  - {name: captcha, test: tests/integration/test_form_browser.py::test_challenges_pause_without_interaction}
+  - {name: gmail_unavailable, test: tests/integration/test_monitor.py::test_transient_source_uses_durable_retry_policy}
+  - {name: network_loss_before_submit, test: tests/integration/test_submission.py::test_reconciliation_finds_no_submission_and_reviews_again}
+  - {name: network_loss_immediately_after_submit, test: tests/integration/test_submission.py::test_lost_response_becomes_unknown}
+  - {name: duplicate_approval_callback, test: tests/integration/test_outreach.py::test_duplicate_slack_callback_cannot_resend}
+  - {name: changed_payload_after_approval, test: tests/integration/test_submission.py::test_changed_answer_revokes_approval}
+  - {name: corrupted_artifact, test: tests/integration/test_form_browser.py::test_corrupt_resume_fails_before_business_state_change}
+  - {name: missing_source_resume, test: tests/fault_injection/test_phase12.py::test_missing_source_resume_fails_closed}
+  - {name: missing_transcript, test: tests/integration/test_form_browser.py::test_missing_transcript_pauses_before_any_upload}
+  - {name: duplicate_job, test: tests/integration/test_qualification.py::test_duplicate_urls_create_one_job_and_task}
+  - {name: deleted_job_posting, test: tests/integration/test_qualification.py::test_removed_page}
+  - {name: application_status_conflict, test: tests/fault_injection/test_phase12.py::test_doctor_detects_application_status_conflict}

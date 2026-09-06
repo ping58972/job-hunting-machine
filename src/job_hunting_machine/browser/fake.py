@@ -15,6 +15,7 @@ class FakeATSApplication:
     captcha: bool = False
     mfa: bool = False
     single_page_submit: bool = False
+    transcript: bool = False
     requests: list[tuple[str, str]] = field(default_factory=list)
 
     def html(self, path: str) -> str:
@@ -40,6 +41,12 @@ class FakeATSApplication:
             else "<button data-jhm-next type='button' "
             "onclick=\"location.href='/review'\">Continue</button>"
         )
+        transcript = (
+            '<label for="transcript">Transcript</label><input id="transcript" '
+            'name="transcript" data-jhm-field="transcript" type="file" required>'
+            if self.transcript
+            else ""
+        )
         return f"""<!doctype html><html><body data-ats="{self.ats}" data-page-key="contact">
         {challenge}<h1>Application</h1>
         <label for="first">First name</label>
@@ -50,7 +57,7 @@ class FakeATSApplication:
         autocomplete="family-name" required>
         <label for="resume">Resume</label>
         <input id="resume" name="resume" data-jhm-field="resume" type="file" required>
-        {unknown}{button}
+        {transcript}{unknown}{button}
         </body></html>"""
 
     async def fulfill(self, route: Route) -> None:

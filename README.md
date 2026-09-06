@@ -1,6 +1,6 @@
 # Job Hunting Machine
 
-Phase 11 extends the local Python foundation for [Architecture v2](docs/architecture-v2.md).
+Phase 12 completes the local Python foundation for [Architecture v2](docs/architecture-v2.md).
 It provides safe file writes, validated configuration, UTC clocks, ULID identifiers,
 structured logging, an Alembic-managed SQLite database, audited repositories, and a local
 administration CLI. Durable workers now run deterministic fixtures with leases,
@@ -12,10 +12,29 @@ ModelGateway provides budgeted, structured OpenAI Responses
 infrastructure with mock transport by default. Qualification uses deterministic policy first and optional budgeted semantic checks. Slack control now supports durable intake, questions,
 notifications, and approval decisions, with fake transport by default.
 
-Phase 11 adds rate-limited active-application scheduling, bounded read-only Gmail and portal
+Phase 11 added rate-limited active-application scheduling, bounded read-only Gmail and portal
 sources, deterministic application matching, Luna-only semantic status classification through
 ModelGateway, root-local evidence, durable Monitor Events, strict state transitions, and Slack
 notification only after a meaningful committed change. Terminal applications are excluded.
+
+Phase 12 adds a versioned 21-scenario fault-injection matrix, four network-free evaluation
+datasets, SQLite-safe local backups, conservative startup recovery, database and architecture
+diagnostics, and read-only operational reports. The operator commands are:
+
+```bash
+uv run --locked jhm status
+uv run --locked jhm queue
+uv run --locked jhm applications
+uv run --locked jhm costs
+uv run --locked jhm doctor
+uv run --locked jhm db integrity
+uv run --locked jhm backup
+uv run --locked jhm recover
+```
+
+`doctor` reports local invariant failures and always leaves LIVE activation as an explicit,
+separate decision. Phase 12 does not enable LIVE. See [local operations](docs/local-operations.md)
+and the [architecture invariant review](docs/architecture-invariant-review.md).
 
 ```bash
 uv run --locked jhm monitor schedule
@@ -158,6 +177,7 @@ The package uses a `src` layout under `src/job_hunting_machine`:
 | `submission/` | Immutable review payloads, final-action ledger, Submission Agent, and reconciliation |
 | `outreach/` | Public contact evidence, ranked drafts, Gmail actions, and Outreach Sender |
 | `monitor/` | Active scheduling, Gmail/portal reads, status classification, evidence, and transitions |
+| `reliability/` | Backup, startup recovery, diagnostics, evals, and read-only reports |
 
 SQLAlchemy and Alembic implement the 23 Architecture v2 domain tables. The separate
 Alembic version table tracks schema revision `0001_architecture_v2`.

@@ -640,6 +640,27 @@ class FormWorker(Worker):
             )
             if prior and prior.current_url:
                 latest_url = prior.current_url
+            expired_login = bool(
+                prior
+                and (
+                    prior.session_status == "EXPIRED"
+                    or (
+                        prior.expires_at is not None
+                        and prior.expires_at <= format_utc(self.queue.clock.now())
+                    )
+                )
+            )
+        if expired_login:
+            await self._wait(
+                lease,
+                memory,
+                {
+                    "kind": "EXPIRED_BROWSER_LOGIN",
+                    "application_id": application_id,
+                    "local_only": True,
+                },
+            )
+            return
         async with self.manager.session(application_id, latest_url) as handle:
             for _ in range(self.policy.max_pages):
                 adapter = await adapter_for(handle.page)
