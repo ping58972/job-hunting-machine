@@ -1,399 +1,575 @@
 # Job Hunting Machine
 
-Phase 12 completes the local Python foundation for [Architecture v2](docs/architecture-v2.md).
-It provides safe file writes, validated configuration, UTC clocks, ULID identifiers,
-structured logging, an Alembic-managed SQLite database, audited repositories, and a local
-administration CLI. Durable workers now run deterministic fixtures with leases,
-LangGraph checkpoints, recovery, and human pause/resume. Workers retrieve links, qualify jobs,
-maintain verified candidate knowledge, prepare native Google Docs resumes and cover letters, and
-prepare approved ATS forms through `READY_TO_REVIEW`, create immutable review snapshots, and run
-an approval-bound Submission Agent with conservative unknown-result reconciliation.
-ModelGateway provides budgeted, structured OpenAI Responses
-infrastructure with mock transport by default. Qualification uses deterministic policy first and optional budgeted semantic checks. Slack control now supports durable intake, questions,
-notifications, and approval decisions, with fake transport by default.
+Job Hunting Machine is a local-first workflow for collecting job links, qualifying jobs,
+preparing evidence-backed resumes and application forms, requesting human approval, submitting
+through a dedicated executor, drafting outreach, and monitoring application status.
 
-Phase 11 added rate-limited active-application scheduling, bounded read-only Gmail and portal
-sources, deterministic application matching, Luna-only semantic status classification through
-ModelGateway, root-local evidence, durable Monitor Events, strict state transitions, and Slack
-notification only after a meaningful committed change. Terminal applications are excluded.
+The main idea is simple: Python handles deterministic work such as URL deduplication, salary
+rules, dates, hashes, state transitions, and retries. AI is used only for bounded ambiguous work.
+SQLite stores the authoritative state, and every important transition is auditable.
 
-Phase 12 adds a versioned 21-scenario fault-injection matrix, four network-free evaluation
-datasets, SQLite-safe local backups, conservative startup recovery, database and architecture
-diagnostics, and read-only operational reports. The operator commands are:
+> **Current safety status:** the complete local and network-free test suite passes, but this
+> repository is **not yet approved for LIVE use**. Real credentials, provider scopes, ATS markup,
+> and a controlled real-world approval/reconciliation exercise have not been validated. The
+> committed mode remains `DRY_RUN`. See the [Phase 12 report](docs/phase-reports/phase12-report.md).
+
+## What the workflow does
+
+```mermaid
+flowchart TD
+    A[Slack job URL] --> B[Retrieve and deduplicate link]
+    B --> C[Fetch job evidence]
+    C --> D{Deterministic qualification}
+    D -->|Fail| E[Record evidence and abort]
+    D -->|Unknown| F[Human review]
+    D -->|Pass| G[Create Application and resume task]
+    G --> H[Retrieve VERIFIED candidate facts]
+    H --> I[Create resume and optional cover letter]
+    I --> J[Prepare ATS form]
+    J --> K[PREPARE_APPLICATION approval]
+    K --> L[Fill form and stop at review]
+    L --> M[Immutable review payload and hash]
+    M --> N[SUBMIT_APPLICATION approval]
+    N --> O[Dedicated Submission Agent]
+    O --> P[Contact drafts and monitoring]
+```
+
+The Form Agent cannot submit. Slack buttons only record decisions. Final submission and email
+sending are separate, approval-bound actions. CAPTCHA, MFA, missing information, uncertain
+authorization, and unknown external results pause instead of being guessed or blindly retried.
+
+## Requirements
+
+- macOS or another local environment with Python 3.12 or newer
+- [`uv`](https://docs.astral.sh/uv/) installed
+- the repository at the fixed Architecture v2 path:
+  `/Users/ping58972/Documents/job-hunting-machine`
+- Chromium only for browser staging or explicitly approved browser use
+- provider accounts and credentials only for later, explicitly enabled integrations
+
+The root path is a security boundary, not a convenience setting. A collaborator using another
+computer must review and deliberately migrate that fixed-root design; changing it is an
+architecture change.
+
+## Setup
+
+Run these commands from Terminal:
 
 ```bash
+cd /Users/ping58972/Documents/job-hunting-machine
+mkdir -p .tmp
+export TMPDIR="$PWD/.tmp"
+
+python3 --version
+uv --version
+uv sync --locked
+uv run --locked jhm version
+uv run --locked jhm config
+```
+
+`uv sync --locked` creates the local `.venv` and installs the exact dependency versions from
+`uv.lock`. Automatic Python downloads are disabled, so install Python 3.12 separately if the first
+version check is too old.
+
+Initialize or upgrade the authoritative database and seed the qualification policy:
+
+```bash
+uv run --locked jhm db init
+uv run --locked jhm db integrity
+uv run --locked jhm doctor
+uv run --locked jhm status
+```
+
+The default database is `data/job-hunting.db`. Alembic owns its schema. The separate
+`data/langgraph-checkpoints.db` is created when a durable graph worker first starts. Repeating
+`jhm db init` is safe: it applies migrations and preserves existing application records and IDs.
+
+`jhm doctor` may warn that the checkpoint database does not exist before the first worker run.
+A warning does not fail the command. A failed invariant exits with status 2 and should be fixed
+before starting workers.
+
+Install Chromium only if you will run the local fake ATS or a separately reviewed browser flow.
+Keep the browser binary under the project root:
+
+```bash
+export PLAYWRIGHT_BROWSERS_PATH="$PWD/data/browser-binaries"
+uv run --locked playwright install chromium
+```
+
+Use the same `PLAYWRIGHT_BROWSERS_PATH` value when starting a browser worker. This download is not
+needed for database, queue, catalog, report, or other non-browser commands.
+
+## First safe run
+
+Use an isolated database to learn the queue and recovery flow without touching job data:
+
+```bash
+uv run --locked jhm db init --database .tmp/demo.db
+uv run --locked jhm queue demo --database .tmp/demo.db
+uv run --locked jhm worker --once --database .tmp/demo.db
+uv run --locked jhm queue --database .tmp/demo.db
+```
+
+To test a durable human pause:
+
+```bash
+uv run --locked jhm queue demo --human --database .tmp/demo.db
+uv run --locked jhm worker --once --database .tmp/demo.db
+uv run --locked jhm queue --database .tmp/demo.db
+uv run --locked jhm queue inspect TASK_ID --database .tmp/demo.db
+uv run --locked jhm queue resume TASK_ID \
+  --interrupt-id INTERRUPT_ID \
+  --reply true \
+  --database .tmp/demo.db
+uv run --locked jhm worker --once --database .tmp/demo.db
+```
+
+Replace `TASK_ID` and `INTERRUPT_ID` with the displayed values. The reply is stored before the
+task becomes eligible, and the worker resumes the same Task ID and LangGraph thread.
+
+Browser tests can use the routed fake ATS with no external network request:
+
+```bash
+export JHM_RUNTIME_MODE=STAGING
+uv run --locked jhm form worker --staging --once --database .tmp/form-demo.db
+```
+
+This command needs a prepared fixture application and `FORM_PROCESS` task in that database; the
+automated test suite creates those fixtures. It never targets a real employer.
+
+## Configuration
+
+Configuration precedence is:
+
+1. Pydantic defaults: `DRY_RUN` and `INFO`.
+2. `config/runtime.yaml` and `config/logging.yaml`.
+3. An optional root-local `.env` file.
+4. Process environment variables.
+
+Copy the example only when you need local overrides:
+
+```bash
+cp .env.example .env
+```
+
+Do not place API keys, OAuth tokens, passwords, browser cookies, or candidate secrets in `.env`,
+YAML, Git, shell scripts, launchd files, Slack messages, or logs. Integration credentials are read
+from the process environment and should come from secure storage with the smallest necessary
+scope.
+
+Runtime modes are:
+
+| Mode | Meaning |
+| --- | --- |
+| `DRY_RUN` | Default. Inspect configuration and local state; external workflow mutations are disabled. |
+| `STAGING` | Use supported local fake adapters for network-free workflow tests. |
+| `LIVE` | Allows a command to check its additional live gates; it does not enable an integration by itself. |
+
+Every integration has separate command and environment gates. For example, submission requires
+configured `LIVE`, `--live`, `FORM_BROWSER_ALLOW_LIVE=1`, `SUBMISSION_ALLOW_LIVE=1`, and a current
+hash-bound approval. Setting only `JHM_RUNTIME_MODE=LIVE` cannot submit or send anything.
+
+## Starting an operator session
+
+There is no single command that silently starts every integration. Start only the workers needed
+for the current stage. At the beginning of a local session, use:
+
+```bash
+cd /Users/ping58972/Documents/job-hunting-machine
+mkdir -p .tmp
+export TMPDIR="$PWD/.tmp"
+
+uv run --locked jhm db init
+uv run --locked jhm recover
+uv run --locked jhm doctor
 uv run --locked jhm status
 uv run --locked jhm queue
-uv run --locked jhm applications
-uv run --locked jhm costs
-uv run --locked jhm doctor
-uv run --locked jhm db integrity
-uv run --locked jhm backup
-uv run --locked jhm recover
 ```
 
-`doctor` reports local invariant failures and always leaves LIVE activation as an explicit,
-separate decision. Phase 12 does not enable LIVE. See [local operations](docs/local-operations.md)
-and the [architecture invariant review](docs/architecture-invariant-review.md).
+Use one recovery coordinator. Recovery checks database compatibility, returns expired leases and
+due retries to eligible states, preserves `WAITING_HUMAN`, and marks abandoned external effects
+for explicit reconciliation. It never repeats an uncertain submission or email send.
+
+## Using the job-processing workflow
+
+The commands in this section describe the implemented workflow. Commands with real provider flags
+must remain disabled until a separate LIVE readiness review has been completed.
+
+### 1. Build the candidate knowledge base
+
+Resume content can use only current `VERIFIED` facts with valid evidence. Start by requesting a
+read-only incremental GitHub scan:
 
 ```bash
-uv run --locked jhm monitor schedule
-uv run --locked jhm monitor worker
+uv run --locked jhm catalog scan OWNER/REPOSITORY
+uv run --locked jhm catalog inventory OWNER
 ```
 
-The worker command reports offline capability by default. Network-free fixtures require
-`--staging`. Live reads require configured `LIVE`, `--live`, `GMAIL_MONITOR_ALLOW_LIVE=1`,
-`PORTAL_MONITOR_ALLOW_LIVE=1`, `OPENAI_ALLOW_LIVE=1`, and short-lived credentials. Gmail
-monitoring exposes search/read only. See [application monitoring](docs/application-monitor.md).
+These commands only enqueue tasks. The default worker only reports that GitHub access is disabled:
 
-Phase 8 form preparation remains documented in [browser and form preparation](docs/form-preparation.md).
-The default form command is offline:
+```bash
+uv run --locked jhm catalog worker
+```
+
+When read-only GitHub access has been reviewed and explicitly enabled, process one queued scan:
+
+```bash
+export GITHUB_ALLOW_LIVE=1
+export GITHUB_TOKEN='least-privilege-token-if-needed'
+uv run --locked jhm catalog worker --live --once
+```
+
+Every extracted observation starts as `UNVERIFIED`. Inspect exact statements, provenance, and
+hashes, then decide one fact at a time:
+
+```bash
+uv run --locked jhm catalog facts
+uv run --locked jhm catalog decide FACT_ID VERIFIED \
+  --value-sha256 VALUE_SHA256 \
+  --reviewer YOUR_LOCAL_REVIEWER_NAME
+uv run --locked jhm catalog retrieve "Python robotics machine learning"
+```
+
+Verification means the statement is truthful and appropriate for your application. Text appearing
+in a repository is not by itself proof that you performed the work or achieved a metric.
+
+### 2. Configure Slack intake and approvals
+
+Edit `config/slack.yaml` with the exact Slack team, app, allowed channel, notification channel, and
+authorized user IDs. Empty allowlists reject all inbound actions. Create a Slack app with Socket
+Mode, interactivity, the required message/app-mention events, and only the scopes needed to post in
+the selected channel.
+
+Inspect the local configuration without connecting:
+
+```bash
+uv run --locked jhm slack
+```
+
+After a separate Slack readiness review, the explicitly gated listener is:
+
+```bash
+export SLACK_ALLOW_LIVE=1
+export SLACK_BOT_TOKEN='xoxb-token-from-secure-storage'
+export SLACK_APP_TOKEN='xapp-token-from-secure-storage'
+uv run --locked jhm slack --live
+```
+
+Post a job URL in the configured Slack channel. Slack stores the event and creates a durable
+`RETRIEVE_LINKS` task. Duplicate deliveries are deduplicated. Slack approval callbacks record a
+decision and resume the exact task; they never execute submission or email sending.
+
+### 3. Retrieve and qualify jobs
+
+Qualification first applies deterministic country, date, salary, experience, paid-work, deadline,
+and application-open rules. Missing CPT, sponsorship, or authorization evidence becomes review
+instead of being invented.
+
+The default command can process URL intake but performs no external job-page fetch:
+
+```bash
+uv run --locked jhm qualify --once
+```
+
+The real read-only fetch path has independent gates:
+
+```bash
+export JOB_FETCH_ALLOW_LIVE=1
+export JOB_BROWSER_ALLOW_LIVE=1
+uv run --locked jhm qualify --fetch-live --browser-live
+```
+
+`--browser-live` is optional and is used only as a read-only fallback after HTTP parsing. Optional
+semantic ambiguity handling additionally requires ModelGateway:
+
+```bash
+export OPENAI_ALLOW_LIVE=1
+export OPENAI_API_KEY='key-from-secure-storage'
+uv run --locked jhm qualify --fetch-live --browser-live --models-live
+```
+
+A passed job atomically creates an Application, Application Details, and a `BUILD_RESUME` task.
+A deterministic failure stores evidence and becomes `ABORTED`. Unknown evidence becomes
+`NEEDS_REVIEW`. No qualification command submits an application.
+
+### 4. Prepare the resume and optional cover letter
+
+The configured source is `source/NDanddank_resume.gdoc`. It must be a valid local Google Docs
+pointer for the intended template. The retained template content also needs an explicit verified
+template fact. The complete procedure is in [Resume and cover-letter artifacts](docs/resume-artifacts.md).
+
+The review sequence is:
+
+```bash
+export GOOGLE_DOCS_ALLOW_LIVE=1
+export GOOGLE_ACCESS_TOKEN='short-lived-token-from-secure-storage'
+uv run --locked jhm resume template-propose --live-docs --folder-id PRIVATE_FOLDER_ID
+uv run --locked jhm catalog facts
+uv run --locked jhm catalog decide TEMPLATE_FACT_ID VERIFIED \
+  --value-sha256 VALUE_SHA256 \
+  --reviewer YOUR_LOCAL_REVIEWER_NAME
+```
+
+After review, set `template_fact_id` in `config/resume.yaml`. Resume generation also uses
+ModelGateway and therefore requires both explicit live flags:
+
+```bash
+export OPENAI_ALLOW_LIVE=1
+export OPENAI_API_KEY='key-from-secure-storage'
+uv run --locked jhm resume worker \
+  --live-docs \
+  --live-models \
+  --folder-id PRIVATE_FOLDER_ID \
+  --once
+```
+
+The worker copies the native template, changes only `PROJECTS` and `SKILLS`, uses verified facts,
+exports a PDF, compresses content until it is exactly one page, records hashes, and creates
+`FORM_PROCESS` only after artifact validation. Enable cover letters with the reviewed policy in
+`config/resume.yaml`.
+
+### 5. Prepare the application form
+
+The Form Agent restores browser state, detects the ATS, resolves canonical fields, uploads the
+exact application artifacts, and stops at `READY_TO_REVIEW`. Unknown fields, missing transcripts,
+sensitive information, unsupported portals, CAPTCHA, MFA, and expired login state pause for a
+human.
 
 ```bash
 uv run --locked jhm form worker
 ```
 
-It reports capability and performs no browser mutation. The network-free fake ATS path is explicit:
+The command above is an offline capability report. Real preparation requires configured `LIVE`,
+`FORM_BROWSER_ALLOW_LIVE=1`, `--live`, and an approved, hash-bound `PREPARE_APPLICATION` plan:
 
 ```bash
-uv run --locked jhm form worker --staging --once --database .tmp/form-demo.db
+uv run --locked jhm form worker --live --once
 ```
 
-The database must contain an eligible `FORM_PROCESS` task and validated application-specific resume.
-Real-site preparation requires configured `LIVE`, `--live`, and `FORM_BROWSER_ALLOW_LIVE=1`.
-The Form Agent still has no final-submit capability. Phase 9 creates a separate `CREATE_REVIEW`
-task when preparation succeeds.
+Do not run this real-site example under the current Phase 12 safety verdict. The Form Agent has no
+final-submit method or action.
 
-The review worker writes canonical JSON and creates a SHA-256-bound Slack approval:
+### 6. Review and submit
+
+Generate immutable canonical review JSON and its SHA-256-bound Slack approval:
 
 ```bash
 uv run --locked jhm submission review-worker --once
 ```
 
-The submission command is inert by default:
+Review the exact form answers and attachment hashes, then approve or reject through the authorized
+Slack interaction. A changed answer or artifact invalidates approval. The default submission
+command is inert:
 
 ```bash
 uv run --locked jhm submission worker
 ```
 
-A real final click requires configured `LIVE`, `--live`, `SUBMISSION_ALLOW_LIVE=1`,
-`FORM_BROWSER_ALLOW_LIVE=1`, an unexpired authorized-user approval, an unchanged review hash,
-the correct application state, and an unused submission idempotency key. Slack callbacks only
-record and resume the decision; the dedicated Submission Agent performs the separately gated action.
+The dedicated live executor requires every independent gate:
 
-After confirmed submission, Phase 10 queues public company-contact discovery. The Connector Agent
-captures source pages locally, deduplicates and ranks exact public contact details, creates email
-and LinkedIn-manual drafts, and can create a Gmail draft. It has no email-send or LinkedIn browser
-capability. The Outreach Sender is a separate LIVE-only worker:
+```bash
+export JHM_RUNTIME_MODE=LIVE
+export FORM_BROWSER_ALLOW_LIVE=1
+export SUBMISSION_ALLOW_LIVE=1
+uv run --locked jhm submission worker --live --once
+```
+
+Do not run this command under the current safety verdict. A lost response after the click becomes
+`UNKNOWN_RESULT`; recovery performs read-only reconciliation and never blindly clicks again.
+
+### 7. Draft outreach
+
+After confirmed submission, the Connector Agent can collect bounded public evidence and create
+email or manual LinkedIn drafts. It never automates LinkedIn browsing or messaging.
 
 ```bash
 uv run --locked jhm outreach connector
 uv run --locked jhm outreach sender
 ```
 
-These default commands are offline. Public reads require `CONTACT_DISCOVERY_ALLOW_LIVE=1`;
-Gmail writes require `GMAIL_ALLOW_LIVE=1` and a short-lived access token. Sending additionally
-requires configured `LIVE`, `--live`, `OUTREACH_SEND_ALLOW_LIVE=1`, and an unchanged SEND_EMAIL
-approval covering recipient, subject, body, and attachment hashes. LinkedIn messages are drafts
-for manual use only. See [connector and outreach operations](docs/outreach.md).
+These default commands are offline capability reports. Live contact discovery and Gmail draft
+creation have separate read/write gates. Sending additionally requires an unchanged SEND_EMAIL
+approval that binds recipient, subject, body, and attachment hashes. See
+[Connector and outreach](docs/outreach.md) before configuring these integrations.
 
-Phase 7 resume generation remains available. The default resume command is offline:
+### 8. Monitor applications
+
+Schedule due active applications locally:
 
 ```bash
-uv run --locked jhm resume worker --once
+uv run --locked jhm monitor schedule
+uv run --locked jhm monitor worker
 ```
 
-Actual generation requires explicit provider opt-ins, verified candidate facts, and a verified
-template source. GDOC files are local pointers to copied native cloud documents, accompanied
-by hashed document snapshots and validated one-page PDFs. Fonts and margins are never shrunk.
+The default worker is an offline capability report. The live monitor uses bounded Gmail read-only
+search and portal GET requests. It ignores unrelated or unchanged evidence, rejects low-confidence
+destructive transitions, and stops scheduling terminal applications. See
+[Application monitor](docs/application-monitor.md) for the explicit gates and Gmail scope.
 
-## Setup
+## Daily operator commands
 
-Use Python 3.12 or newer and `uv`. The development interpreter is pinned to 3.12.
-The project root is fixed by the architecture:
+```bash
+uv run --locked jhm status
+uv run --locked jhm queue
+uv run --locked jhm applications --limit 100
+uv run --locked jhm costs
+uv run --locked jhm db integrity
+uv run --locked jhm doctor
+uv run --locked jhm backup
+```
+
+| Command | Purpose |
+| --- | --- |
+| `jhm status` | Compact runtime, queue, approval, application, and unknown-action health. |
+| `jhm queue` | Task counts by status/type, stale leases, human waits, and due retries. |
+| `jhm applications` | Bounded application stage and status report. |
+| `jhm costs` | Settled model cost and unresolved budget reservations. |
+| `jhm db integrity` | SQLite, foreign keys, Alembic revision, WAL, and busy timeout. |
+| `jhm doctor` | Database, artifacts, approvals, provenance, source boundaries, and evals. |
+| `jhm backup` | SQLite-safe root-local backup with a hash manifest. |
+| `jhm recover` | Conservative recovery after interruption. |
+
+Backups are stored under `backups/` and remain Git-ignored. Architecture v2 recommends 30 daily
+backups. Phase 12 does not automatically delete old backups. See
+[Local operations and startup](docs/local-operations.md) for restoration, launchd examples,
+shutdown, and incident handling.
+
+## Important data locations
+
+| Path | Contents |
+| --- | --- |
+| `data/job-hunting.db` | Authoritative application, queue, approval, action, usage, and audit state. |
+| `data/langgraph-checkpoints.db` | Separate LangGraph checkpoints. |
+| `data/browser-sessions/` | Private browser storage state; never commit or log it. |
+| `evidence/` | Job, project, contact, and monitor evidence with hashes. |
+| `applications/` | Immutable review payloads and application-local records. |
+| `resumes/`, `cover-letters/` | Generated application artifacts. |
+| `backups/` | SQLite-safe local backups and manifests. |
+| `config/` | Runtime policies, model registry, prompts, Slack, resume, and monitor settings. |
+| `docs/phase-reports/` | Implementation scope, tests, limitations, and safety results by phase. |
+
+Generated data, credentials, candidate source documents, databases, logs, and browser sessions are
+excluded from Git. Every workflow-generated write must remain under the project root through
+`PathGuard` or an approved guarded integration boundary.
+
+## Application and task states
+
+Common task states are `READY`, `ACTIVE`, `WAITING_RETRY`, `WAITING_HUMAN`, `SUCCEEDED`, `FAILED`,
+`ABORTED`, and `CANCELED`. Workers use leases and optimistic versions so two workers cannot own the
+same task. A stale owner is fenced from committing after another worker recovers the lease.
+
+Common application states include `FORM_READY`, `READY_TO_REVIEW`, `SUBMITTED`, `UNDER_REVIEW`,
+`ASSESSMENT`, `RECRUITER_SCREEN`, `INTERVIEW`, `FINAL_INTERVIEW`, `OFFER`, `REJECTED`, `WITHDRAWN`,
+and `CANCELED`. State changes must update the authoritative database and append audit evidence.
+
+## Troubleshooting
+
+### A task is stuck after a crash
+
+```bash
+uv run --locked jhm recover
+uv run --locked jhm queue
+uv run --locked jhm doctor
+```
+
+Wait for an active lease to expire. Do not edit lease or status columns manually.
+
+### A task is waiting for a person
+
+Inspect its memory and interrupt:
+
+```bash
+uv run --locked jhm queue inspect TASK_ID
+```
+
+Answer through the authorized Slack flow when available, or use `jhm queue resume` only when you
+understand the exact interrupt contract. Never put secrets in shell history or Slack replies.
+
+### The database is locked
+
+SQLite uses WAL and a 5,000 ms busy timeout. Stop duplicate coordinators, allow the active writer
+to finish, then inspect and recover. Do not copy an active database file with a normal filesystem
+copy; use `jhm backup`.
+
+### Submission or email result is unknown
+
+Do not retry the external action manually. Preserve the database, checkpoint database, action
+ledger, logs, and newest backup. The dedicated agent must reconcile provider evidence before a new
+review or approval can be created.
+
+### Browser login expired, CAPTCHA, or MFA appeared
+
+The correct state is `WAITING_HUMAN`. Complete authentication or challenge handling manually, then
+resume the exact task. The system never solves or bypasses CAPTCHA.
+
+### Resume generation reports missing or unverified facts
+
+Run `jhm catalog facts`, verify the source evidence and current commit, record a deliberate fact
+decision, and retry through the existing task/recovery contract. Never add a fact merely to make a
+resume pass validation.
+
+## Development and validation
+
+Run the complete network-free validation suite:
 
 ```bash
 cd /Users/ping58972/Documents/job-hunting-machine
 mkdir -p .tmp
 export TMPDIR="$PWD/.tmp"
-uv sync --locked
-uv run --locked jhm version
-uv run --locked jhm config
+
+uv run --locked pytest
+uv run --locked ruff check .
+uv run --locked ruff format --check .
+uv run --locked mypy
+git diff --check
+uv lock --check
 ```
 
-Install Python separately if 3.12 is unavailable; automatic Python downloads are
-disabled. `uv` stores dependencies in `.venv` and its cache in `.uv-cache` inside
-this repository. The temporary-directory setting keeps build temporary files local.
-For a different installed supported interpreter, pass `--python /path/to/python` to
-`uv sync`. Commit `uv.lock` so other installations use the tested dependency versions.
+The Phase 12 baseline is 402 passing tests, four evaluation datasets with 13 passing cases, Ruff
+and strict mypy success, and no live external calls. Test fixtures use fake Slack, Gmail, GitHub,
+Google Docs, model, and ATS adapters. The fault matrix covers process death, stale leases, SQLite
+locking, model errors, duplicate deliveries and approvals, provider failures, browser failures,
+missing/corrupted artifacts, submission ambiguity, duplicate jobs, deleted postings, and status
+conflicts.
 
-## Configuration
+## Architecture and detailed guides
 
-Configuration precedence, from lowest to highest, is:
+- [Architecture v2](docs/architecture-v2.md): authoritative design and invariants.
+- [Architecture invariant review](docs/architecture-invariant-review.md): INV-001 through INV-018.
+- [Local operations](docs/local-operations.md): startup, backup, recovery, launchd, and incidents.
+- [Database](docs/database.md): schema, repositories, transactions, and policy seeds.
+- [Durable orchestration](docs/orchestration.md): leases, checkpoints, retries, and interrupts.
+- [ModelGateway](docs/model-gateway.md): model registry, budgets, prompts, and mock/live boundaries.
+- [Slack control plane](docs/slack-control-plane.md): intake, allowlists, interactions, and delivery.
+- [Qualification](docs/qualification.md): evidence, deterministic rules, semantic fallback, and limits.
+- [Candidate knowledge](docs/candidate-knowledge.md): scanning, provenance, verification, and retrieval.
+- [Resume artifacts](docs/resume-artifacts.md): template verification, generation, PDF QA, and recovery.
+- [Form preparation](docs/form-preparation.md): ATS adapters, canonical fields, challenges, and approval.
+- [Submission](docs/submission.md): immutable review, exact-content approval, idempotency, and reconciliation.
+- [Outreach](docs/outreach.md): public contacts, drafts, email approval, and manual LinkedIn.
+- [Application monitor](docs/application-monitor.md): scheduling, status evidence, confidence, and terminal states.
+- [Phase 12 report](docs/phase-reports/phase12-report.md): final test totals, limitations, and LIVE verdict.
 
-1. Pydantic defaults: `DRY_RUN` and `INFO`.
-2. `config/runtime.yaml` and `config/logging.yaml`.
-3. The optional project-root `.env` file.
-4. Process environment variables.
+## Source layout
 
-Only `JHM_RUNTIME_MODE` and `JHM_LOG_LEVEL` are supported. Unknown `JHM_` variables,
-unknown YAML fields, invalid values, and unsafe file paths fail validation. Relative
-configuration paths resolve against the project root, independent of the working
-directory. No parent-directory dotenv search or variable interpolation occurs.
-Copy `.env.example` to `.env` if local overrides are needed; keep secrets out of YAML
-and Git. No credentials are needed for mock mode or normal tests.
+The Python package uses `src/job_hunting_machine`:
 
-Runtime modes are exactly `DRY_RUN`, `STAGING`, and `LIVE`. Log levels are `DEBUG`,
-`INFO`, `WARNING`, `ERROR`, and `CRITICAL`. Reading a configured mode does not start
-a runtime. The explicit `jhm worker` command runs only synthetic workflows in DRY_RUN,
-even if configuration says LIVE. Slack connectivity requires separate explicit opt-in. Real-site
-form preparation and final submission use independent explicit gates.
-Contact discovery, Gmail drafts, and email sending have separate Phase 10 gates.
-Gmail and portal monitoring have separate Phase 11 read-only gates.
-
-```bash
-uv run --locked jhm --help
-uv run --locked jhm config --runtime-file config/runtime.yaml
-uv run --locked python -m job_hunting_machine version
-```
-
-## Foundation interfaces
-
-The package uses a `src` layout under `src/job_hunting_machine`:
-
-| Module | Responsibility |
+| Package | Responsibility |
 | --- | --- |
-| `config.py`, `runtime.py` | Immutable Pydantic settings and runtime-mode enum |
-| `security/paths.py` | Fixed project boundary and guarded local writes |
-| `clock.py` | Injectable UTC clock and millisecond ISO-8601 formatting |
-| `ids.py` | Central ULID and architecture-prefixed ID generation |
-| `observability/logging.py` | Structured JSON logging to stderr |
-| `cli.py` | Configuration/version inspection and explicit local database initialization |
-| `database/` | SQLAlchemy models, Alembic migrations, transactions, repositories, and policy seeds |
-| `orchestration/` | Audited queue service, lease-fenced checkpoints, worker recovery, and fixture graphs |
-| `slack/` | Durable Slack inbox, safe outbox, approval decisions, and opt-in Socket Mode |
-| `models/` | ModelGateway, registry, budgets, pricing, prompts, and Responses/mock transports |
-| `browser/` | Playwright, ATS adapters, canonical fields, approvals, actions, and Form Agent |
-| `submission/` | Immutable review payloads, final-action ledger, Submission Agent, and reconciliation |
-| `outreach/` | Public contact evidence, ranked drafts, Gmail actions, and Outreach Sender |
-| `monitor/` | Active scheduling, Gmail/portal reads, status classification, evidence, and transitions |
-| `reliability/` | Backup, startup recovery, diagnostics, evals, and read-only reports |
+| `database/` | SQLAlchemy models, Alembic, transactions, repositories, and policies. |
+| `orchestration/` | Queue leases, retries, checkpoints, recovery, and human interrupts. |
+| `agents/` | Link intake, job fetching, extraction, and qualification. |
+| `knowledge/` | GitHub catalog, evidence, fact verification, and project retrieval. |
+| `models/` | ModelGateway, OpenAI client boundary, routing, prompts, budgets, and usage. |
+| `slack/` | Durable inbox/outbox, questions, notifications, and decision callbacks. |
+| `resume/` | Verified-only resume and cover-letter planning and artifact validation. |
+| `browser/` | Playwright lifecycle, ATS adapters, form resolution, and preparation actions. |
+| `submission/` | Immutable review payloads, dedicated submission, and reconciliation. |
+| `outreach/` | Contact evidence, drafts, Gmail actions, sender, and manual LinkedIn flow. |
+| `monitor/` | Gmail/portal reads, classification, scheduling, transitions, and notifications. |
+| `reliability/` | Backups, recovery, health checks, operational reports, and evals. |
+| `security/`, `clock.py`, `ids.py` | Root confinement, centralized UTC time, and durable IDs. |
 
-SQLAlchemy and Alembic implement the 23 Architecture v2 domain tables. The separate
-Alembic version table tracks schema revision `0001_architecture_v2`.
-
-## Local database setup
-
-Initialize or upgrade the authoritative application database explicitly:
-
-```bash
-uv run --offline --locked jhm db init
-```
-
-This command applies Alembic migrations to `data/job-hunting.db` and seeds the
-qualification/salary policy from Architecture v2. Repeating it preserves existing
-records, policy edits, and IDs. It creates no jobs, applications, candidate facts,
-external actions, or LangGraph checkpoint database. Policy dates are selection rules,
-not verified candidate facts.
-
-For an isolated database inside the project root:
-
-```bash
-uv run --offline --locked jhm db init --database .tmp/example.db
-```
-
-Direct schema administration also uses Alembic; it does not seed policy:
-
-```bash
-uv run --offline --locked alembic current
-uv run --offline --locked alembic upgrade head
-```
-
-Every connection enables foreign keys, WAL, `synchronous=NORMAL`, and a 5,000 ms busy
-timeout. SQL temporary storage stays in memory. Database files are private; paths
-and journal sidecars pass PathGuard checks. SQL that attaches/exports another database
-or disables required safety settings is blocked. SQLite performs native file IO, so
-the database directory must remain trusted; see the limitations in the phase report.
-
-Use `Database.transaction()` with repository methods. They flush and record audit
-history but never commit independently. A transaction exception rolls everything back.
-Application creation requires a persisted PASSED job and atomically creates its
-pipeline row, details row, and one READY `BUILD_RESUME` task. Repeating the same
-operation returns its existing IDs; conflicting replay data is rejected. Queue status
-updates require an expected version and append an audit in the same transaction.
-
-Activity history exposes only append/read operations, with migration-owned triggers
-also blocking SQL UPDATE, DELETE, and replacement of existing events. Artifact and
-Approval repositories store metadata;
-new approvals remain PENDING until explicitly decided through ApprovalService.
-Submission state changes and final actions are audited in the same durable database.
-
-See [database interfaces and policy data](docs/database.md) for schema ownership,
-transaction examples, durable ID rules, and Phase 1 boundaries.
-
-## ModelGateway infrastructure
-
-`config/models.yaml` defines models, routes, reasoning, and budget ceilings.
-`config/prompts.yaml` contains semantic-versioned instructions. Inspect them with:
-
-```bash
-uv run --offline --locked jhm models
-```
-
-`ModelGateway` defaults to a scripted mock and requires a persisted task for each
-request. Explicit live construction requires `OPENAI_ALLOW_LIVE=1` and an API key;
-normal tests never make live calls. Qualification semantics use this gateway only when explicitly supplied.
-See [model interfaces, pricing, and budget semantics](docs/model-gateway.md).
-
-## Durable queue and checkpoints
-
-Start the local worker after initializing the main database:
-
-```bash
-uv run --offline --locked jhm worker --once
-```
-
-Startup verifies the Alembic revision, initializes the library-owned
-`data/langgraph-checkpoints.db`, recovers expired leases and due retries, and leaves
-human waits unchanged. It does not claim `BUILD_RESUME` or other unimplemented task types.
-Without `--once`, the worker polls until SIGINT/SIGTERM and drains checkpoint writes
-before releasing its active lease.
-
-For an explicit synthetic example, use an isolated project-local database:
-
-```bash
-uv run --offline --locked jhm db init --database .tmp/demo/jobs.db
-uv run --offline --locked jhm queue demo --human --database .tmp/demo/jobs.db
-uv run --offline --locked jhm worker --once --database .tmp/demo/jobs.db
-uv run --offline --locked jhm queue inspect TASK_ID --database .tmp/demo/jobs.db
-uv run --offline --locked jhm queue resume TASK_ID --interrupt-id INTERRUPT_ID --reply true --database .tmp/demo/jobs.db
-uv run --offline --locked jhm worker --once --database .tmp/demo/jobs.db
-```
-
-Replace `TASK_ID` and `INTERRUPT_ID` with the returned identifiers. Human replies are
-stored in the main database before the task becomes READY. The next worker resumes
-the same LangGraph thread; its thread ID is exactly the persisted Task ID.
-See [orchestration interfaces and recovery semantics](docs/orchestration.md).
-
-### File writes
-
-Every application file write must use `PathGuard`. Its boundary cannot be widened by
-configuration. Tests may select a narrower directory inside the real project root.
-
-```python
-from job_hunting_machine.security.paths import PathGuard
-
-guard = PathGuard()
-guard.mkdir("reports", exist_ok=True)
-guard.write_text("reports/example.txt", "Local artifact\n")
-```
-
-Parent traversal, outside absolute paths, and symbolic-link write paths are rejected.
-The guarded write helpers use descriptor-relative, no-follow operations and atomic
-replacement. New directories are private (`0700`); files are private (`0600`).
-`validate_write()` is a preflight check, not a safe substitute for a guarded write:
-do not validate a path and then write it with an unguarded third-party API.
-
-This is an application safety boundary, not an operating-system sandbox. It cannot
-constrain arbitrary Python, shell commands, or a hostile process moving already-open
-directories outside the root. The project and its ancestors must remain trusted.
-Later integrations must preserve this boundary when handing paths to external libraries.
-The helpers fsync file contents, but do not fsync parent directory entries; atomic
-replacement alone does not guarantee that a new filename survives a power failure.
-
-### Time, IDs, and logs
-
-Inject `Clock` into code that needs time. `SystemClock` supplies UTC time;
-`FrozenClock` makes tests reproducible. `format_utc()` emits timestamps such as
-`2026-09-05T08:23:31.123Z` and rejects naive datetimes.
-
-`IdGenerator` creates ULIDs from a 48-bit millisecond timestamp and 80 bits of
-cryptographic randomness. The 128-bit value is encoded as 26 Crockford Base32
-characters. Task IDs match `^TASK_[0-9A-HJKMNP-TV-Z]{26}$`; Application IDs use
-the same suffix with `APP_`. The other architecture prefixes are `JOB_`, `APR_`,
-`ART_`, `CNT_`, and `EVT_`. Generate an ID once at its future persistence boundary;
-do not regenerate it when replaying work. Phase 1 persists IDs and validates their
-prefix/ULID representation at repository and ORM boundaries. Phase 2 reuses these
-IDs across claims, retries, checkpoints, and restarts.
-
-JSON logs include timestamp, level, Task ID, Application ID, agent, event, status,
-duration, and error class. Use static event names and approved correlation fields.
-Do not log candidate content, passwords, cookies, tokens, or arbitrary exception
-messages. The logger filters fields; callers still must avoid placing sensitive
-values in allowed fields. Persistent log files are deferred. Database state changes append separate `activity_log` events.
-
-## Validation
-
-From the project root with the setup above:
-
-```bash
-uv run --offline --locked pytest
-uv run --offline --locked ruff check .
-uv run --offline --locked ruff format --check .
-uv run --offline --locked mypy
-```
-
-Pytest temporary files stay in `.pytest-tmp`; lint/type caches also stay in the
-repository. Tests block outbound socket connections and DNS lookup, use synthetic
-data, and exercise path confinement, configuration precedence, DRY_RUN defaults,
-ID formats, deterministic clocks, structured logs, migrations, SQL constraints,
-transaction rollback, optimistic concurrency, atomic application creation, seeding,
-and persistence across restarts. Queue acceptance tests also terminate a subprocess
-mid-workflow, resume saved nodes, fence stale writers, and preserve human interrupts.
-No test uses an external service.
-
-See [the Phase 11 implementation report](docs/phase-reports/phase11-report.md) for
-the executed commands, acceptance results, and limitations. Existing candidate
-documents remain untouched and ignored by Git. The [Phase 0 report](docs/phase-reports/phase0-report.md)
-and [Phase 1 report](docs/phase-reports/phase1-report.md) are preserved as historical
-evidence, together with the [Phase 2 report](docs/phase-reports/phase2-report.md).
-The [Phase 3 report](docs/phase-reports/phase3-report.md) is also preserved.
-The [Phase 4 report](docs/phase-reports/phase4-report.md) is preserved.
-The [Phase 5 report](docs/phase-reports/phase5-report.md) is preserved.
-The prior phase reports remain historical evidence. Phase 12 has not started.
-
-## Slack control plane
-
-Inspect the deny-by-default configuration without connecting:
-
-```bash
-uv run --offline --locked jhm slack
-```
-
-Live operation requires configured workspace, app, channel and user allowlists,
-process environment credentials, `SLACK_ALLOW_LIVE=1`, and `jhm slack --live`.
-Buttons record approval or rejection only; they never execute submission.
-See [Slack setup, recovery, and security boundaries](docs/slack-control-plane.md).
-
-## Link retrieval and qualification
-
-```bash
-uv run --offline --locked jhm qualify --once
-```
-
-The default command processes one URL intake task and leaves qualification tasks queued.
-Public HTTP fetching requires `--fetch-live` and `JOB_FETCH_ALLOW_LIVE=1`.
-Browser fallback additionally requires `--browser-live` and `JOB_BROWSER_ALLOW_LIVE=1`.
-Semantic model calls require `--models-live` plus the existing OpenAI opt-in and credentials.
-Python tests inject fake pages and mock model responses.
-
-Passing jobs atomically create the Application, Details and a READY BUILD_RESUME task.
-Failed jobs become ABORTED; unresolved jobs become NEEDS_REVIEW. See
-[Phase 5 interfaces and limits](docs/qualification.md).
-
-## Candidate knowledge and GitHub catalog
-
-Phase 6 records source-backed project observations and candidate facts. GitHub scans are
-incremental by commit and blob SHA. Extracted facts remain UNVERIFIED until explicit audited
-review; resume retrieval exposes current VERIFIED facts only. Optional AI ranking can reorder
-an already filtered shortlist and cannot introduce projects or claims.
-
-```bash
-uv run --offline --locked jhm catalog --help
-uv run --offline --locked jhm catalog worker
-uv run --offline --locked jhm catalog retrieve "Python robotics"
-```
-
-GitHub API reads require `--live` and `GITHUB_ALLOW_LIVE=1`. The default worker command does
-not connect. See [candidate knowledge setup, verification, and limits](docs/candidate-knowledge.md).
-The catalog remains read-only during later resume and submission phases.
+Architecture v2 describes the project as a reliable workflow system with AI components. It is not
+a single autonomous agent, and it never treats model output as permission to perform an external
+action.
