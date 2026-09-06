@@ -1,12 +1,12 @@
 # Job Hunting Machine
 
-Phase 4 extends the local Python foundation for [Architecture v2](docs/architecture-v2.md).
+Phase 5 extends the local Python foundation for [Architecture v2](docs/architecture-v2.md).
 It provides safe file writes, validated configuration, UTC clocks, ULID identifiers,
 structured logging, an Alembic-managed SQLite database, audited repositories, and a local
 administration CLI. Durable workers now run deterministic fixtures with leases,
-LangGraph checkpoints, recovery, and human pause/resume. Real job-search workflows
-are not implemented. ModelGateway now provides budgeted, structured OpenAI Responses
-infrastructure with mock transport by default. No Qualification Agent runs. Slack control now supports durable intake, questions,
+LangGraph checkpoints, recovery, and human pause/resume. Phase 5 workers retrieve links and qualify jobs; later preparation and submission
+workflows are not implemented. ModelGateway now provides budgeted, structured OpenAI Responses
+infrastructure with mock transport by default. Qualification uses deterministic policy first and optional budgeted semantic checks. Slack control now supports durable intake, questions,
 notifications, and approval decisions, with fake transport by default.
 
 ## Setup
@@ -121,7 +121,7 @@ Activity history exposes only append/read operations, with migration-owned trigg
 also blocking SQL UPDATE, DELETE, and replacement of existing events. Artifact and
 Approval repositories store metadata;
 new approvals remain PENDING until explicitly decided through ApprovalService.
-No qualification evaluator, resume builder, or submission executor exists.
+The Phase 5 evaluator records decisions; no resume builder or submission executor exists.
 
 See [database interfaces and policy data](docs/database.md) for schema ownership,
 transaction examples, durable ID rules, and Phase 1 boundaries.
@@ -137,7 +137,7 @@ uv run --offline --locked jhm models
 
 `ModelGateway` defaults to a scripted mock and requires a persisted task for each
 request. Explicit live construction requires `OPENAI_ALLOW_LIVE=1` and an API key;
-normal tests never make live calls. No Qualification Agent is implemented.
+normal tests never make live calls. Qualification semantics use this gateway only when explicitly supplied.
 See [model interfaces, pricing, and budget semantics](docs/model-gateway.md).
 
 ## Durable queue and checkpoints
@@ -237,13 +237,14 @@ and persistence across restarts. Queue acceptance tests also terminate a subproc
 mid-workflow, resume saved nodes, fence stale writers, and preserve human interrupts.
 No test uses an external service.
 
-See [the Phase 4 implementation report](docs/phase-reports/phase4-report.md) for
+See [the Phase 5 implementation report](docs/phase-reports/phase5-report.md) for
 the executed commands, acceptance results, and limitations. Existing candidate
 documents remain untouched and ignored by Git. The [Phase 0 report](docs/phase-reports/phase0-report.md)
 and [Phase 1 report](docs/phase-reports/phase1-report.md) are preserved as historical
 evidence, together with the [Phase 2 report](docs/phase-reports/phase2-report.md).
 The [Phase 3 report](docs/phase-reports/phase3-report.md) is also preserved.
-Phase 5 has not started.
+The [Phase 4 report](docs/phase-reports/phase4-report.md) is preserved.
+Phase 6 has not started.
 
 ## Slack control plane
 
@@ -257,3 +258,19 @@ Live operation requires configured workspace, app, channel and user allowlists,
 process environment credentials, `SLACK_ALLOW_LIVE=1`, and `jhm slack --live`.
 Buttons record approval or rejection only; they never execute submission.
 See [Slack setup, recovery, and security boundaries](docs/slack-control-plane.md).
+
+## Link retrieval and qualification
+
+```bash
+uv run --offline --locked jhm qualify --once
+```
+
+The default command processes one URL intake task and leaves qualification tasks queued.
+Public HTTP fetching requires `--fetch-live` and `JOB_FETCH_ALLOW_LIVE=1`.
+Browser fallback additionally requires `--browser-live` and `JOB_BROWSER_ALLOW_LIVE=1`.
+Semantic model calls require `--models-live` plus the existing OpenAI opt-in and credentials.
+Python tests inject fake pages and mock model responses.
+
+Passing jobs atomically create the Application, Details and a READY BUILD_RESUME task.
+Failed jobs become ABORTED; unresolved jobs become NEEDS_REVIEW. No resume or application
+submission runs. See [Phase 5 interfaces and limits](docs/qualification.md).

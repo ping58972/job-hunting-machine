@@ -42,7 +42,9 @@ IdGenerator, and PathGuard APIs. Use guarded helpers for application file writes
 validate_write alone does not protect a subsequent unguarded write.
 Do not make the fixed project-root boundary configurable.
 Only use static, non-sensitive event, agent, and status tokens in logs.
-Phase 4 adds Slack control infrastructure; do not start Phase 5 link retrieval.
+Phase 5 adds URL intake and qualification; do not start Phase 6 candidate knowledge.
+Keep qualification graph nodes pure; fetch/model calls run at durable effect boundaries.
+Unknown authorization evidence requires review. No application submission is implemented.
 Slack callbacks record decisions only; they must never submit applications.
 Slack transport defaults to fake; live Socket Mode requires explicit opt-in.
 Route Slack sends through ExternalActionService and keep outbound templates closed.

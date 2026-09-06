@@ -1,7 +1,7 @@
 version: 1
-team_id: null
-app_id: null
-authorized_user_ids: []
-allowed_channel_ids: []
-notification_channel_id: null
+team_id: T0BKT96A7NG
+app_id: A0BV4BF2WJZ
+authorized_user_ids: [U0BKPHXKHHQ]
+allowed_channel_ids: [C0BVAM6QU4R]
+notification_channel_id: C0BVAM6QU4R
 approval_ttl_seconds: 86400

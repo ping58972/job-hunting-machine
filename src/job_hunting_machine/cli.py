@@ -17,7 +17,7 @@ from job_hunting_machine.security.paths import PROJECT_ROOT
 
 app = typer.Typer(
     name="jhm",
-    help="Job Hunting Machine: Phase 4 Slack control plane. Live Slack requires opt-in.",
+    help="Job Hunting Machine: Phase 5 retrieval and qualification. Live access requires opt-in.",
     no_args_is_help=True,
     add_completion=False,
     pretty_exceptions_enable=False,
@@ -60,7 +60,8 @@ def show_config(
                 "project_root": str(settings.project_root),
                 "configured_runtime_mode": settings.runtime_mode.value,
                 "log_level": settings.log_level,
-                "phase": 4,
+                "phase": 5,
+                "qualification_available": True,
                 "slack_control_available": True,
                 "model_gateway_available": True,
                 "workflow_available": True,
@@ -254,3 +255,69 @@ def slack_control(
     finally:
         if database is not None:
             database.dispose()
+
+
+@app.command("qualify")
+def run_qualification(
+    once: Annotated[
+        bool, typer.Option(help="Process at most one intake or qualification task.")
+    ] = False,
+    fetch_live: Annotated[bool, typer.Option(help="Opt into public HTTP job-page reads.")] = False,
+    browser_live: Annotated[
+        bool, typer.Option(help="Opt into read-only Playwright fallback.")
+    ] = False,
+    models_live: Annotated[
+        bool, typer.Option(help="Opt into budgeted semantic ModelGateway calls.")
+    ] = False,
+    database_path: Annotated[Path, typer.Option("--database")] = DATABASE_PATH,
+) -> None:
+    """Run Phase 5 only. Live transports each additionally require their environment flag."""
+    import asyncio
+
+    from job_hunting_machine.agents.fetch import HTTPReader, JobFetcher, PlaywrightReader
+    from job_hunting_machine.agents.worker import QualificationWorker, run_workers
+    from job_hunting_machine.models.gateway import ModelGateway
+    from job_hunting_machine.orchestration import QueueService
+
+    if browser_live and not fetch_live:
+        typer.echo("Browser fallback also requires --fetch-live.", err=True)
+        raise typer.Exit(code=2)
+    database = Database(database_path)
+
+    async def run() -> None:
+        gateway = ModelGateway.for_openai(database) if models_live else None
+        try:
+            fetcher = JobFetcher(
+                HTTPReader() if fetch_live else None, PlaywrightReader() if browser_live else None
+            )
+            worker = QualificationWorker(QueueService(database), fetcher=fetcher, gateway=gateway)
+            if not fetch_live:
+                # Offline CLI can intake URLs, but must not classify real jobs from empty fixtures.
+                worker.workflows.pop("QUALIFY_JOB")
+            if once:
+                await worker.startup()
+                executed = await worker.run_once()
+                typer.echo(
+                    json.dumps({"phase": 5, "executed": executed, "submission_available": False})
+                )
+            else:
+                workers = [worker]
+                for _ in range(7):
+                    peer = QualificationWorker(
+                        QueueService(database), fetcher=fetcher, gateway=gateway
+                    )
+                    if not fetch_live:
+                        peer.workflows.pop("QUALIFY_JOB")
+                    workers.append(peer)
+                await run_workers(workers)
+        finally:
+            if gateway is not None:
+                await gateway.close()
+
+    try:
+        asyncio.run(run())
+    except (ValueError, DatabaseError, ConfigurationError):
+        typer.echo("Qualification runner failed; check local configuration and opt-ins.", err=True)
+        raise typer.Exit(code=2) from None
+    finally:
+        database.dispose()
