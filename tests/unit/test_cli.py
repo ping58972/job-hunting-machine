@@ -21,7 +21,7 @@ def test_cli_version() -> None:
 def test_cli_help() -> None:
     result = runner.invoke(app, ["--help"])
     assert result.exit_code == 0
-    assert "Phase 5" in result.stdout
+    assert "Phase 6" in result.stdout
 
 
 def test_cli_default_configuration(tmp_path: Path) -> None:
@@ -31,7 +31,7 @@ def test_cli_default_configuration(tmp_path: Path) -> None:
     assert config["configured_runtime_mode"] == "DRY_RUN"
     assert config["workflow_available"] is True
     assert config["external_workflows_available"] is False
-    assert config["phase"] == 5
+    assert config["phase"] == 6
     assert config["model_gateway_available"] is True
     log = json.loads(result.stderr)
     assert log["event"] == "configuration_validated"
@@ -70,3 +70,9 @@ def test_slack_inspection_is_offline() -> None:
     result = runner.invoke(app, ["slack"])
     assert result.exit_code == 0
     assert "authorized_user_ids" in json.loads(result.stdout)
+
+
+def test_catalog_worker_default_does_not_connect() -> None:
+    result = runner.invoke(app, ["catalog", "worker", "--once"])
+    assert result.exit_code == 0
+    assert json.loads(result.stdout)["live_github"] is False

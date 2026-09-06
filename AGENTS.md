@@ -42,7 +42,9 @@ IdGenerator, and PathGuard APIs. Use guarded helpers for application file writes
 validate_write alone does not protect a subsequent unguarded write.
 Do not make the fixed project-root boundary configurable.
 Only use static, non-sensitive event, agent, and status tokens in logs.
-Phase 5 adds URL intake and qualification; do not start Phase 6 candidate knowledge.
+Phase 6 adds source-backed candidate knowledge; do not start Phase 7 resume editing.
+Extracted GitHub observations remain UNVERIFIED until explicit audited human review.
+Resume retrieval must use current VERIFIED facts with validated source evidence only.
 Keep qualification graph nodes pure; fetch/model calls run at durable effect boundaries.
 Unknown authorization evidence requires review. No application submission is implemented.
 Slack callbacks record decisions only; they must never submit applications.

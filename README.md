@@ -1,6 +1,6 @@
 # Job Hunting Machine
 
-Phase 5 extends the local Python foundation for [Architecture v2](docs/architecture-v2.md).
+Phase 6 extends the local Python foundation for [Architecture v2](docs/architecture-v2.md).
 It provides safe file writes, validated configuration, UTC clocks, ULID identifiers,
 structured logging, an Alembic-managed SQLite database, audited repositories, and a local
 administration CLI. Durable workers now run deterministic fixtures with leases,
@@ -237,14 +237,15 @@ and persistence across restarts. Queue acceptance tests also terminate a subproc
 mid-workflow, resume saved nodes, fence stale writers, and preserve human interrupts.
 No test uses an external service.
 
-See [the Phase 5 implementation report](docs/phase-reports/phase5-report.md) for
+See [the Phase 6 implementation report](docs/phase-reports/phase6-report.md) for
 the executed commands, acceptance results, and limitations. Existing candidate
 documents remain untouched and ignored by Git. The [Phase 0 report](docs/phase-reports/phase0-report.md)
 and [Phase 1 report](docs/phase-reports/phase1-report.md) are preserved as historical
 evidence, together with the [Phase 2 report](docs/phase-reports/phase2-report.md).
 The [Phase 3 report](docs/phase-reports/phase3-report.md) is also preserved.
 The [Phase 4 report](docs/phase-reports/phase4-report.md) is preserved.
-Phase 6 has not started.
+The [Phase 5 report](docs/phase-reports/phase5-report.md) is preserved.
+Phase 7 has not started.
 
 ## Slack control plane
 
@@ -274,3 +275,20 @@ Python tests inject fake pages and mock model responses.
 Passing jobs atomically create the Application, Details and a READY BUILD_RESUME task.
 Failed jobs become ABORTED; unresolved jobs become NEEDS_REVIEW. No resume or application
 submission runs. See [Phase 5 interfaces and limits](docs/qualification.md).
+
+## Candidate knowledge and GitHub catalog
+
+Phase 6 records source-backed project observations and candidate facts. GitHub scans are
+incremental by commit and blob SHA. Extracted facts remain UNVERIFIED until explicit audited
+review; resume retrieval exposes current VERIFIED facts only. Optional AI ranking can reorder
+an already filtered shortlist and cannot introduce projects or claims.
+
+```bash
+uv run --offline --locked jhm catalog --help
+uv run --offline --locked jhm catalog worker
+uv run --offline --locked jhm catalog retrieve "Python robotics"
+```
+
+GitHub API reads require `--live` and `GITHUB_ALLOW_LIVE=1`. The default worker command does
+not connect. See [candidate knowledge setup, verification, and limits](docs/candidate-knowledge.md).
+No resume editing is implemented.

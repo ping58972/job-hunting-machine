@@ -14,6 +14,10 @@ from job_hunting_machine.database.repositories.base import (
     ReplayConflictError,
 )
 from job_hunting_machine.database.repositories.jobs import JobCreate, JobRepository
+from job_hunting_machine.database.repositories.knowledge import (
+    CandidateFactRepository,
+    CatalogRepository,
+)
 from job_hunting_machine.database.repositories.tasks import TaskCreate, TaskRepository
 
 __all__ = [
@@ -26,6 +30,8 @@ __all__ = [
     "ApprovalRepository",
     "ArtifactCreate",
     "ArtifactRepository",
+    "CandidateFactRepository",
+    "CatalogRepository",
     "ConcurrentUpdateError",
     "JobCreate",
     "JobRepository",

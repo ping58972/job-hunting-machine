@@ -68,6 +68,7 @@ routes:
 budgets:
   per_task_usd:
     QUALIFY_JOB: '0.03'
+    RANK_PROJECTS: '0.05'
     BUILD_RESUME: '0.30'
     BUILD_COVER_LETTER: '0.15'
     FORM_PROCESS: '0.20'

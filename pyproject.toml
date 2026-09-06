@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "job-hunting-machine"
 version = "0.1.0"
-description = "Local-first job retrieval and qualification (Architecture v2, Phase 5)"
+description = "Local-first candidate knowledge and GitHub catalog (Architecture v2, Phase 6)"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
