@@ -31,7 +31,8 @@ def test_cli_default_configuration(tmp_path: Path) -> None:
     assert config["configured_runtime_mode"] == "DRY_RUN"
     assert config["workflow_available"] is True
     assert config["external_workflows_available"] is False
-    assert config["phase"] == 8
+    assert config["phase"] == 9
+    assert config["submission_available"] is True
     assert config["form_preparation_available"] is True
     assert config["resume_artifacts_available"] is True
     assert config["model_gateway_available"] is True

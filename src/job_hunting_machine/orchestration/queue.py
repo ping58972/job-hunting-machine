@@ -116,6 +116,26 @@ class QueueService:
                 self._audit(session, row, "task_ready", "NEW")
             return row.task_id
 
+    def enqueue_waiting_in_transaction(
+        self,
+        session: Session,
+        data: TaskCreate,
+        memory: Mapping[str, object],
+    ) -> AgentTask:
+        """Create an audited human-waiting task inside a caller transaction."""
+        row = TaskRepository(session, self.clock, self.ids).create(replace(data, task_status="NEW"))
+        if row.task_status == "WAITING_HUMAN":
+            stored = session.get(TaskMemory, row.task_id)
+            if stored is None or json.loads(stored.state_json) != dict(memory):
+                raise ConcurrentUpdateError("Waiting task memory changed")
+            return row
+        if row.task_status != "NEW":
+            raise ConcurrentUpdateError("Task already entered a different state")
+        row.task_status = "WAITING_HUMAN"
+        self._memory(session, row, memory)
+        self._audit(session, row, "task_waiting_human", "NEW")
+        return row
+
     def claim(self, task_types: Sequence[str]) -> Lease | None:
         if not task_types:
             return None

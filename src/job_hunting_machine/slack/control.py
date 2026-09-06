@@ -1,7 +1,7 @@
 """Durable inbox and decision processing. No callback executes an external action."""
 
 import json
-from typing import Any
+from typing import Any, Literal, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -231,6 +231,10 @@ class SlackControlPlane:
                 task_id=approval.task_id or "",
                 application_id=approval.application_id,
                 approval_id=approval_id,
+                approval_type=cast(
+                    Literal["PREPARE_APPLICATION", "SUBMIT_APPLICATION"],
+                    approval.approval_type,
+                ),
                 payload_sha256=approval.payload_sha256,
             )
         return self.actions.plan(message, f"approval:{approval_id}:{approval.payload_sha256}")

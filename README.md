@@ -1,18 +1,19 @@
 # Job Hunting Machine
 
-Phase 8 extends the local Python foundation for [Architecture v2](docs/architecture-v2.md).
+Phase 9 extends the local Python foundation for [Architecture v2](docs/architecture-v2.md).
 It provides safe file writes, validated configuration, UTC clocks, ULID identifiers,
 structured logging, an Alembic-managed SQLite database, audited repositories, and a local
 administration CLI. Durable workers now run deterministic fixtures with leases,
 LangGraph checkpoints, recovery, and human pause/resume. Workers retrieve links, qualify jobs,
 maintain verified candidate knowledge, prepare native Google Docs resumes and cover letters, and
-prepare approved ATS forms through `READY_TO_REVIEW`. Final submission is not implemented.
+prepare approved ATS forms through `READY_TO_REVIEW`, create immutable review snapshots, and run
+an approval-bound Submission Agent with conservative unknown-result reconciliation.
 ModelGateway provides budgeted, structured OpenAI Responses
 infrastructure with mock transport by default. Qualification uses deterministic policy first and optional budgeted semantic checks. Slack control now supports durable intake, questions,
 notifications, and approval decisions, with fake transport by default.
 
-Phase 8 documentation: [browser and form preparation](docs/form-preparation.md) and
-[acceptance report](docs/phase-reports/phase8-report.md). The default form command is offline:
+Phase 8 form preparation remains documented in [browser and form preparation](docs/form-preparation.md).
+The default form command is offline:
 
 ```bash
 uv run --locked jhm form worker
@@ -26,7 +27,25 @@ uv run --locked jhm form worker --staging --once --database .tmp/form-demo.db
 
 The database must contain an eligible `FORM_PROCESS` task and validated application-specific resume.
 Real-site preparation requires configured `LIVE`, `--live`, and `FORM_BROWSER_ALLOW_LIVE=1`.
-There is no final-submit method, selector, command, task, or browser action in Phase 8.
+The Form Agent still has no final-submit capability. Phase 9 creates a separate `CREATE_REVIEW`
+task when preparation succeeds.
+
+The review worker writes canonical JSON and creates a SHA-256-bound Slack approval:
+
+```bash
+uv run --locked jhm submission review-worker --once
+```
+
+The submission command is inert by default:
+
+```bash
+uv run --locked jhm submission worker
+```
+
+A real final click requires configured `LIVE`, `--live`, `SUBMISSION_ALLOW_LIVE=1`,
+`FORM_BROWSER_ALLOW_LIVE=1`, an unexpired authorized-user approval, an unchanged review hash,
+the correct application state, and an unused submission idempotency key. Slack callbacks only
+record and resume the decision; the dedicated Submission Agent performs the separately gated action.
 
 Phase 7 resume generation remains available. The default resume command is offline:
 
@@ -77,8 +96,8 @@ and Git. No credentials are needed for mock mode or normal tests.
 Runtime modes are exactly `DRY_RUN`, `STAGING`, and `LIVE`. Log levels are `DEBUG`,
 `INFO`, `WARNING`, `ERROR`, and `CRITICAL`. Reading a configured mode does not start
 a runtime. The explicit `jhm worker` command runs only synthetic workflows in DRY_RUN,
-even if configuration says LIVE. Slack connectivity requires separate explicit opt-in. Phase 8
-real-site preparation requires its three explicit gates. Final submission belongs to a later phase.
+even if configuration says LIVE. Slack connectivity requires separate explicit opt-in. Real-site
+form preparation and final submission use independent explicit gates.
 
 ```bash
 uv run --locked jhm --help
@@ -103,6 +122,7 @@ The package uses a `src` layout under `src/job_hunting_machine`:
 | `slack/` | Durable Slack inbox, safe outbox, approval decisions, and opt-in Socket Mode |
 | `models/` | ModelGateway, registry, budgets, pricing, prompts, and Responses/mock transports |
 | `browser/` | Playwright, ATS adapters, canonical fields, approvals, actions, and Form Agent |
+| `submission/` | Immutable review payloads, final-action ledger, Submission Agent, and reconciliation |
 
 SQLAlchemy and Alembic implement the 23 Architecture v2 domain tables. The separate
 Alembic version table tracks schema revision `0001_architecture_v2`.
@@ -151,7 +171,7 @@ Activity history exposes only append/read operations, with migration-owned trigg
 also blocking SQL UPDATE, DELETE, and replacement of existing events. Artifact and
 Approval repositories store metadata;
 new approvals remain PENDING until explicitly decided through ApprovalService.
-The Phase 5 evaluator records decisions; no resume builder or submission executor exists.
+Submission state changes and final actions are audited in the same durable database.
 
 See [database interfaces and policy data](docs/database.md) for schema ownership,
 transaction examples, durable ID rules, and Phase 1 boundaries.
@@ -267,7 +287,7 @@ and persistence across restarts. Queue acceptance tests also terminate a subproc
 mid-workflow, resume saved nodes, fence stale writers, and preserve human interrupts.
 No test uses an external service.
 
-See [the Phase 8 implementation report](docs/phase-reports/phase8-report.md) for
+See [the Phase 9 implementation report](docs/phase-reports/phase9-report.md) for
 the executed commands, acceptance results, and limitations. Existing candidate
 documents remain untouched and ignored by Git. The [Phase 0 report](docs/phase-reports/phase0-report.md)
 and [Phase 1 report](docs/phase-reports/phase1-report.md) are preserved as historical
@@ -275,7 +295,7 @@ evidence, together with the [Phase 2 report](docs/phase-reports/phase2-report.md
 The [Phase 3 report](docs/phase-reports/phase3-report.md) is also preserved.
 The [Phase 4 report](docs/phase-reports/phase4-report.md) is preserved.
 The [Phase 5 report](docs/phase-reports/phase5-report.md) is preserved.
-The prior phase reports remain historical evidence. Phase 9 has not started.
+The prior phase reports remain historical evidence. Phase 10 has not started.
 
 ## Slack control plane
 
@@ -303,8 +323,8 @@ Semantic model calls require `--models-live` plus the existing OpenAI opt-in and
 Python tests inject fake pages and mock model responses.
 
 Passing jobs atomically create the Application, Details and a READY BUILD_RESUME task.
-Failed jobs become ABORTED; unresolved jobs become NEEDS_REVIEW. No resume or application
-submission runs. See [Phase 5 interfaces and limits](docs/qualification.md).
+Failed jobs become ABORTED; unresolved jobs become NEEDS_REVIEW. See
+[Phase 5 interfaces and limits](docs/qualification.md).
 
 ## Candidate knowledge and GitHub catalog
 
@@ -321,4 +341,4 @@ uv run --offline --locked jhm catalog retrieve "Python robotics"
 
 GitHub API reads require `--live` and `GITHUB_ALLOW_LIVE=1`. The default worker command does
 not connect. See [candidate knowledge setup, verification, and limits](docs/candidate-knowledge.md).
-No resume editing is implemented.
+The catalog remains read-only during later resume and submission phases.

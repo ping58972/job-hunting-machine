@@ -42,7 +42,7 @@ IdGenerator, and PathGuard APIs. Use guarded helpers for application file writes
 validate_write alone does not protect a subsequent unguarded write.
 Do not make the fixed project-root boundary configurable.
 Only use static, non-sensitive event, agent, and status tokens in logs.
-Phase 8 prepares application forms through READY_TO_REVIEW; do not start Phase 9 review or submission.
+Phase 9 owns immutable review, approval, submission, and reconciliation; do not start Phase 10.
 Form Agent interfaces must never expose a final-submit operation or activate a submit control.
 Require a hash-bound PREPARE_APPLICATION approval before the first browser mutation.
 CAPTCHA, MFA, sensitive fields, unsupported ATS portals, and ambiguous fields pause for a human.
@@ -56,7 +56,9 @@ Create FORM_PROCESS only in the transaction that records validated artifacts.
 Extracted GitHub observations remain UNVERIFIED until explicit audited human review.
 Resume retrieval must use current VERIFIED facts with validated source evidence only.
 Keep qualification graph nodes pure; fetch/model calls run at durable effect boundaries.
-Unknown authorization evidence requires review. No application submission is implemented.
+Unknown authorization evidence requires review. Only the dedicated Submission Agent may perform
+the final click, after LIVE mode, current authorized-user approval, exact review hash, application
+state, and idempotency checks all pass. UNKNOWN_RESULT must reconcile without another click.
 Slack callbacks record decisions only; they must never submit applications.
 Slack transport defaults to fake; live Socket Mode requires explicit opt-in.
 Route Slack sends through ExternalActionService and keep outbound templates closed.

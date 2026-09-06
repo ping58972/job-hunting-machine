@@ -28,6 +28,7 @@ class OutboundMessage(BaseModel):
     task_id: str
     application_id: str | None = None
     approval_id: str | None = None
+    approval_type: Literal["PREPARE_APPLICATION", "SUBMIT_APPLICATION"] | None = None
     payload_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     notice: Notice | None = None
     question: Question | None = None
@@ -53,7 +54,11 @@ class OutboundMessage(BaseModel):
     def render(self, action_id: str) -> dict[str, Any]:
         heading = {
             "notice": "Task update",
-            "approval": "Approval decision requested",
+            "approval": (
+                "Application ready for submission review"
+                if self.approval_type == "SUBMIT_APPLICATION"
+                else "Application preparation approval requested"
+            ),
             "question": "Missing information requested",
         }[self.kind]
         text = f"{heading}\nTask: {self.task_id}"
@@ -82,7 +87,12 @@ class OutboundMessage(BaseModel):
                             "text": {"type": "plain_text", "text": label},
                         }
                         for decision, label in (
-                            ("approve", "Record approval"),
+                            (
+                                "approve",
+                                "Approve submission"
+                                if self.approval_type == "SUBMIT_APPLICATION"
+                                else "Approve preparation",
+                            ),
                             ("reject", "Reject"),
                         )
                     ],

@@ -17,10 +17,11 @@ from job_hunting_machine.knowledge.cli import app as catalog_app
 from job_hunting_machine.observability.logging import configure_logging
 from job_hunting_machine.resume.cli import app as resume_app
 from job_hunting_machine.security.paths import PROJECT_ROOT
+from job_hunting_machine.submission.cli import app as submission_app
 
 app = typer.Typer(
     name="jhm",
-    help="Job Hunting Machine: Phase 8 form preparation. Final submission is unavailable.",
+    help="Job Hunting Machine: Phase 9 immutable review and approval-bound submission.",
     no_args_is_help=True,
     add_completion=False,
     pretty_exceptions_enable=False,
@@ -30,6 +31,7 @@ app.add_typer(database_app, name="db")
 app.add_typer(catalog_app, name="catalog")
 app.add_typer(resume_app, name="resume")
 app.add_typer(form_app, name="form")
+app.add_typer(submission_app, name="submission")
 
 
 @app.command()
@@ -66,7 +68,8 @@ def show_config(
                 "project_root": str(settings.project_root),
                 "configured_runtime_mode": settings.runtime_mode.value,
                 "log_level": settings.log_level,
-                "phase": 8,
+                "phase": 9,
+                "submission_available": True,
                 "form_preparation_available": True,
                 "resume_artifacts_available": True,
                 "candidate_knowledge_available": True,

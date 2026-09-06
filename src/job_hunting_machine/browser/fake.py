@@ -23,8 +23,10 @@ class FakeATSApplication:
         if path == "/review":
             return f"""<!doctype html><html><body data-ats="{self.ats}" data-page-key="review">
             <h1>Review application</h1><button type="button"
-            onclick="fetch('/submitted',{{method:'POST'}})">
+            onclick="fetch('/submitted',{{method:'POST'}}).then(()=>location.href='/confirmation')">
             Submit Application</button></body></html>"""
+        if path == "/confirmation":
+            return "<!doctype html><html><body><h1>Application submitted</h1></body></html>"
         unknown = (
             '<label for="portfolio">Favorite robot</label><input id="portfolio" '
             'data-jhm-field="favorite_robot" required>'

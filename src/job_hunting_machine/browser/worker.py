@@ -33,6 +33,8 @@ from job_hunting_machine.database.repositories import (
     FormAnswerRepository,
     FormInformationRepository,
     SessionCheckpoint,
+    TaskCreate,
+    TaskRepository,
 )
 from job_hunting_machine.database.repositories.activity import ActivityEvent, ActivityLogRepository
 from job_hunting_machine.ids import IdKind
@@ -600,6 +602,18 @@ class FormWorker(Worker):
             app.pipeline_stage = "REVIEW"
             app.application_status = details.application_status = "READY_TO_REVIEW"
             app.updated_at = details.updated_at = format_utc(self.queue.clock.now())
+            review_task = TaskRepository(session, self.queue.clock, self.queue.ids).create(
+                TaskCreate(
+                    "CREATE_REVIEW",
+                    task_status="READY",
+                    application_id=application_id,
+                    job_id=app.job_id,
+                    parent_task_id=lease.task_id,
+                    dedupe_key=f"create_review:{application_id}",
+                    payload={"application_id": application_id},
+                )
+            )
+            app.current_task_id = review_task.task_id
             memory["interrupts"] = {}
             memory.pop("resume", None)
             self.queue.complete_in_transaction(session, lease, memory)
