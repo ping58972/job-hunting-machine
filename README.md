@@ -159,11 +159,11 @@ scope.
 
 Runtime modes are:
 
-| Mode | Meaning |
-| --- | --- |
-| `DRY_RUN` | Default. Inspect configuration and local state; external workflow mutations are disabled. |
-| `STAGING` | Use supported local fake adapters for network-free workflow tests. |
-| `LIVE` | Allows a command to check its additional live gates; it does not enable an integration by itself. |
+| Mode        | Meaning                                                                                           |
+| ----------- | ------------------------------------------------------------------------------------------------- |
+| `DRY_RUN` | Default. Inspect configuration and local state; external workflow mutations are disabled.         |
+| `STAGING` | Use supported local fake adapters for network-free workflow tests.                                |
+| `LIVE`    | Allows a command to check its additional live gates; it does not enable an integration by itself. |
 
 Every integration has separate command and environment gates. For example, submission requires
 configured `LIVE`, `--live`, `FORM_BROWSER_ALLOW_LIVE=1`, `SUBMISSION_ALLOW_LIVE=1`, and a current
@@ -410,16 +410,16 @@ uv run --locked jhm doctor
 uv run --locked jhm backup
 ```
 
-| Command | Purpose |
-| --- | --- |
-| `jhm status` | Compact runtime, queue, approval, application, and unknown-action health. |
-| `jhm queue` | Task counts by status/type, stale leases, human waits, and due retries. |
-| `jhm applications` | Bounded application stage and status report. |
-| `jhm costs` | Settled model cost and unresolved budget reservations. |
-| `jhm db integrity` | SQLite, foreign keys, Alembic revision, WAL, and busy timeout. |
-| `jhm doctor` | Database, artifacts, approvals, provenance, source boundaries, and evals. |
-| `jhm backup` | SQLite-safe root-local backup with a hash manifest. |
-| `jhm recover` | Conservative recovery after interruption. |
+| Command              | Purpose                                                                   |
+| -------------------- | ------------------------------------------------------------------------- |
+| `jhm status`       | Compact runtime, queue, approval, application, and unknown-action health. |
+| `jhm queue`        | Task counts by status/type, stale leases, human waits, and due retries.   |
+| `jhm applications` | Bounded application stage and status report.                              |
+| `jhm costs`        | Settled model cost and unresolved budget reservations.                    |
+| `jhm db integrity` | SQLite, foreign keys, Alembic revision, WAL, and busy timeout.            |
+| `jhm doctor`       | Database, artifacts, approvals, provenance, source boundaries, and evals. |
+| `jhm backup`       | SQLite-safe root-local backup with a hash manifest.                       |
+| `jhm recover`      | Conservative recovery after interruption.                                 |
 
 Backups are stored under `backups/` and remain Git-ignored. Architecture v2 recommends 30 daily
 backups. Phase 12 does not automatically delete old backups. See
@@ -428,17 +428,17 @@ shutdown, and incident handling.
 
 ## Important data locations
 
-| Path | Contents |
-| --- | --- |
-| `data/job-hunting.db` | Authoritative application, queue, approval, action, usage, and audit state. |
-| `data/langgraph-checkpoints.db` | Separate LangGraph checkpoints. |
-| `data/browser-sessions/` | Private browser storage state; never commit or log it. |
-| `evidence/` | Job, project, contact, and monitor evidence with hashes. |
-| `applications/` | Immutable review payloads and application-local records. |
-| `resumes/`, `cover-letters/` | Generated application artifacts. |
-| `backups/` | SQLite-safe local backups and manifests. |
-| `config/` | Runtime policies, model registry, prompts, Slack, resume, and monitor settings. |
-| `docs/phase-reports/` | Implementation scope, tests, limitations, and safety results by phase. |
+| Path                              | Contents                                                                        |
+| --------------------------------- | ------------------------------------------------------------------------------- |
+| `data/job-hunting.db`           | Authoritative application, queue, approval, action, usage, and audit state.     |
+| `data/langgraph-checkpoints.db` | Separate LangGraph checkpoints.                                                 |
+| `data/browser-sessions/`        | Private browser storage state; never commit or log it.                          |
+| `evidence/`                     | Job, project, contact, and monitor evidence with hashes.                        |
+| `applications/`                 | Immutable review payloads and application-local records.                        |
+| `resumes/`, `cover-letters/`  | Generated application artifacts.                                                |
+| `backups/`                      | SQLite-safe local backups and manifests.                                        |
+| `config/`                       | Runtime policies, model registry, prompts, Slack, resume, and monitor settings. |
+| `docs/phase-reports/`           | Implementation scope, tests, limitations, and safety results by phase.          |
 
 Generated data, credentials, candidate source documents, databases, logs, and browser sessions are
 excluded from Git. Every workflow-generated write must remain under the project root through
@@ -551,21 +551,21 @@ conflicts.
 
 The Python package uses `src/job_hunting_machine`:
 
-| Package | Responsibility |
-| --- | --- |
-| `database/` | SQLAlchemy models, Alembic, transactions, repositories, and policies. |
-| `orchestration/` | Queue leases, retries, checkpoints, recovery, and human interrupts. |
-| `agents/` | Link intake, job fetching, extraction, and qualification. |
-| `knowledge/` | GitHub catalog, evidence, fact verification, and project retrieval. |
-| `models/` | ModelGateway, OpenAI client boundary, routing, prompts, budgets, and usage. |
-| `slack/` | Durable inbox/outbox, questions, notifications, and decision callbacks. |
-| `resume/` | Verified-only resume and cover-letter planning and artifact validation. |
-| `browser/` | Playwright lifecycle, ATS adapters, form resolution, and preparation actions. |
-| `submission/` | Immutable review payloads, dedicated submission, and reconciliation. |
-| `outreach/` | Contact evidence, drafts, Gmail actions, sender, and manual LinkedIn flow. |
-| `monitor/` | Gmail/portal reads, classification, scheduling, transitions, and notifications. |
-| `reliability/` | Backups, recovery, health checks, operational reports, and evals. |
-| `security/`, `clock.py`, `ids.py` | Root confinement, centralized UTC time, and durable IDs. |
+| Package                                 | Responsibility                                                                  |
+| --------------------------------------- | ------------------------------------------------------------------------------- |
+| `database/`                           | SQLAlchemy models, Alembic, transactions, repositories, and policies.           |
+| `orchestration/`                      | Queue leases, retries, checkpoints, recovery, and human interrupts.             |
+| `agents/`                             | Link intake, job fetching, extraction, and qualification.                       |
+| `knowledge/`                          | GitHub catalog, evidence, fact verification, and project retrieval.             |
+| `models/`                             | ModelGateway, OpenAI client boundary, routing, prompts, budgets, and usage.     |
+| `slack/`                              | Durable inbox/outbox, questions, notifications, and decision callbacks.         |
+| `resume/`                             | Verified-only resume and cover-letter planning and artifact validation.         |
+| `browser/`                            | Playwright lifecycle, ATS adapters, form resolution, and preparation actions.   |
+| `submission/`                         | Immutable review payloads, dedicated submission, and reconciliation.            |
+| `outreach/`                           | Contact evidence, drafts, Gmail actions, sender, and manual LinkedIn flow.      |
+| `monitor/`                            | Gmail/portal reads, classification, scheduling, transitions, and notifications. |
+| `reliability/`                        | Backups, recovery, health checks, operational reports, and evals.               |
+| `security/`, `clock.py`, `ids.py` | Root confinement, centralized UTC time, and durable IDs.                        |
 
 Architecture v2 describes the project as a reliable workflow system with AI components. It is not
 a single autonomous agent, and it never treats model output as permission to perform an external

@@ -1,16 +1,43 @@
-% Authoritative JHM cover-letter template. Compile through LatexCompiler.
-\documentclass[11pt,letterpaper]{article}
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=0.9in]{geometry}
 \usepackage[T1]{fontenc}
-\usepackage[utf8]{inputenc}
-\usepackage{mathptmx}
-\usepackage[letterpaper,margin=1in]{geometry}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{xcolor}
 \usepackage[hidelinks]{hyperref}
+\definecolor{ink}{HTML}{202530}
+\definecolor{accent}{HTML}{5145A6}
 \pagestyle{empty}
 \setlength{\parindent}{0pt}
-\setlength{\parskip}{10pt}
-
+\setlength{\parskip}{0.85em}
+\linespread{1.07}
+\hypersetup{pdftitle={Cover Letter - Stripe Software Engineer, New Grad},pdfauthor={Nalongsone Danddank}}
 \begin{document}
-% JHM:COVER_LETTER:START
-Cover-letter content is generated from verified facts for each application.
-% JHM:COVER_LETTER:END
+\color{ink}
+{\LARGE\bfseries Nalongsone Danddank}\\[6pt]
+\href{mailto:ndanddank@umass.edu}{ndanddank@umass.edu}\quad\textbar\quad
+\href{https://ping58972.github.io/}{ping58972.github.io}\\[3pt]
+\href{https://github.com/ping58972}{github.com/ping58972}
+\par\vspace{-0.3em}
+{\color{accent}\hrule height 0.8pt}
+\vspace{0.7em}
+September 7, 2026
+
+Stripe Hiring Team\\
+Singapore
+
+\textbf{Re: Software Engineer, New Grad (Job ID 8160776)}
+
+Dear Stripe Hiring Team,
+
+I am pursuing a Master of Science in Computer Science at the University of Massachusetts Amherst and am applying for Stripe's Software Engineer, New Grad position in Singapore. My background combines Java backend development with graduate projects in robotics and machine learning. Stripe's focus on programmable financial infrastructure appeals to me because it brings together problems I enjoy: designing clear APIs, understanding how services interact, and making software dependable for the people who use it.
+
+In my Reactive Spring WebFlux learning project, I built a three-service purchase workflow connecting order, product, and user services. The implementation combines asynchronous HTTP calls, MongoDB, and PostgreSQL, including a conditional balance-debit operation. Working through backpressure, retries, and the boundary between blocking database access and reactive execution strengthened my understanding of service behavior and failure modes. I also practiced testing reactive streams and API behavior with StepVerifier and WebTestClient. This work gives me a practical foundation for learning the systems behind Stripe's APIs.
+
+My robotics work has required me to learn unfamiliar systems and connect components across a broader stack. For a UMass team project, I worked on an autonomous symbol-search system using camera images, LiDAR, and trained classifiers. I subsequently migrated the ROS1 workflow to ROS2 Jazzy while preserving the trained model checkpoints. The migration included Docker-based setup, explicit control over which motion controller could run, and validation through unit checks and headless Gazebo simulation. Documenting the architecture, setup steps, and validation limits made the work easier for others to understand and reproduce.
+
+I would bring this combination of backend fundamentals, curiosity, and careful validation to Stripe. I value the role's emphasis on reviewing and testing AI-assisted work, and would apply that same discipline when using development tools on your team. I am eager to contribute to well-scoped projects, learn from experienced engineers, and grow my understanding of the businesses that depend on Stripe. Thank you for considering my application.
+
+Sincerely,\\[5pt]
+Nalongsone Danddank
 \end{document}

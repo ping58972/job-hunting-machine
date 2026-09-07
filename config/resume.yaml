@@ -10,4 +10,4 @@ required_pages: 1
 max_compression_rounds: 8
 sol_finalization: true
 # Enqueue a cover letter after the resume and hold FORM_PROCESS until both validate.
-cover_letter: false
+cover_letter: true
